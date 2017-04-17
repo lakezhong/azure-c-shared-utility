@@ -7,10 +7,19 @@
 #define realloc mock_realloc
 #define free mock_free
 
-extern void* mock_malloc(size_t size);
-extern void* mock_calloc(size_t nmemb, size_t size);
-extern void* mock_realloc(void* ptr, size_t size);
-extern void mock_free(void* ptr);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    extern void* mock_malloc(size_t size);
+    extern void* mock_calloc(size_t nmemb, size_t size);
+    extern void* mock_realloc(void* ptr, size_t size);
+    extern void mock_free(void* ptr);
 
 #undef _CRTDBG_MAP_ALLOC
 #include "../src/gballoc.c"
+
+#ifdef __cplusplus
+}
+#endif

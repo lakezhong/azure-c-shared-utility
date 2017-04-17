@@ -4,6 +4,13 @@
 #this is CMakeLists for micromock
 cmake_minimum_required(VERSION 2.8.11)
 
+IF(WIN32)
+    if(NOT CppUnitTest_h_exists)
+        #micromock_cpp really wants on windows CppUnitTest.h
+        return()
+    endif()
+endif()
+
 set(micromock_cpp_files
 ./src/micromockcharstararenullterminatedstrings.cpp
 ./src/micromockexception.cpp

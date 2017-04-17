@@ -14,44 +14,46 @@ function(set_test_target_folder whatIsBuilding ext)
 endfunction()
 
 function(windows_unittests_add_dll whatIsBuilding)
-    link_directories(${whatIsBuilding}_dll $ENV{VCInstallDir}UnitTest/lib)
+    if(CppUnitTest_h_exists)
+        link_directories(${whatIsBuilding}_dll $ENV{VCInstallDir}UnitTest/lib)
 
-    add_library(${whatIsBuilding}_dll SHARED
-        ${${whatIsBuilding}_cpp_files}
-        ${${whatIsBuilding}_h_files}
-        ${${whatIsBuilding}_c_files}
-        ${logging_files}
-    )
+        add_library(${whatIsBuilding}_dll SHARED
+            ${${whatIsBuilding}_cpp_files}
+            ${${whatIsBuilding}_h_files}
+            ${${whatIsBuilding}_c_files}
+            ${logging_files}
+        )
 
-    set_test_target_folder(${whatIsBuilding} "dll")
+        set_test_target_folder(${whatIsBuilding} "dll")
 
-    set(PARSING_ADDITIONAL_LIBS OFF)
-    set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
-    set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER)
-    foreach(f ${ARGN})
-        set(skip_to_next FALSE)
-        if(${f} STREQUAL "ADDITIONAL_LIBS")
-            SET(PARSING_ADDITIONAL_LIBS ON)
-            SET(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
-            #also unset all the other states
-            set(skip_to_next TRUE)
-        elseif(${f} STREQUAL "VALGRIND_SUPPRESSIONS_FILE")
-            SET(PARSING_ADDITIONAL_LIBS OFF)
-            SET(PARSING_VALGRIND_SUPPRESSIONS_FILE ON)
-            set(skip_to_next TRUE)
-        endif()
-
-        if(NOT skip_to_next)
-            if(PARSING_ADDITIONAL_LIBS)
-                target_link_libraries(${whatIsBuilding}_dll ${f})
+        set(PARSING_ADDITIONAL_LIBS OFF)
+        set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
+        set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER)
+        foreach(f ${ARGN})
+            set(skip_to_next FALSE)
+            if(${f} STREQUAL "ADDITIONAL_LIBS")
+                SET(PARSING_ADDITIONAL_LIBS ON)
+                SET(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
+                #also unset all the other states
+                set(skip_to_next TRUE)
+            elseif(${f} STREQUAL "VALGRIND_SUPPRESSIONS_FILE")
+                SET(PARSING_ADDITIONAL_LIBS OFF)
+                SET(PARSING_VALGRIND_SUPPRESSIONS_FILE ON)
+                set(skip_to_next TRUE)
             endif()
-        endif()
 
-    endforeach()
+            if(NOT skip_to_next)
+                if(PARSING_ADDITIONAL_LIBS)
+                    target_link_libraries(${whatIsBuilding}_dll ${f})
+                endif()
+            endif()
 
-    target_include_directories(${whatIsBuilding}_dll PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
-    target_compile_definitions(${whatIsBuilding}_dll PUBLIC -DCPP_UNITTEST)
-    target_link_libraries(${whatIsBuilding}_dll micromock_cpp_unittest umock_c ctest testrunnerswitcher)
+        endforeach()
+
+        target_include_directories(${whatIsBuilding}_dll PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
+        target_compile_definitions(${whatIsBuilding}_dll PUBLIC -DCPP_UNITTEST)
+        target_link_libraries(${whatIsBuilding}_dll micromock_cpp_unittest umock_c ctest testrunnerswitcher)
+    endif()
 endfunction()
 
 function(windows_unittests_add_exe whatIsBuilding)
@@ -223,76 +225,78 @@ endfunction(build_test_artifacts)
 
 
 function(c_windows_unittests_add_dll whatIsBuilding folder)
-    link_directories(${whatIsBuilding}_dll $ENV{VCInstallDir}UnitTest/lib)
+    if(CppUnitTest_h_exists)
+        link_directories(${whatIsBuilding}_dll $ENV{VCInstallDir}UnitTest/lib)
 
-    add_library(${whatIsBuilding}_testsonly_lib STATIC
-            ${${whatIsBuilding}_test_files}
-    )
-    SET(VAR 1)
-    foreach(file ${${whatIsBuilding}_test_files})
-        set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS -DCPPUNITTEST_SYMBOL=some_symbol_for_cppunittest_${VAR})
-        MATH(EXPR VAR "${VAR}+1")
-    endforeach()
+        add_library(${whatIsBuilding}_testsonly_lib STATIC
+                ${${whatIsBuilding}_test_files}
+        )
+        SET(VAR 1)
+        foreach(file ${${whatIsBuilding}_test_files})
+            set_source_files_properties(${file} PROPERTIES COMPILE_FLAGS -DCPPUNITTEST_SYMBOL=some_symbol_for_cppunittest_${VAR})
+            MATH(EXPR VAR "${VAR}+1")
+        endforeach()
 
-    set_target_properties(${whatIsBuilding}_testsonly_lib
-               PROPERTIES
-               FOLDER ${folder} )
+        set_target_properties(${whatIsBuilding}_testsonly_lib
+                   PROPERTIES
+                   FOLDER ${folder} )
 
-    target_include_directories(${whatIsBuilding}_testsonly_lib PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
-    target_compile_definitions(${whatIsBuilding}_testsonly_lib PUBLIC -DCPP_UNITTEST)
-    target_compile_options(${whatIsBuilding}_testsonly_lib PUBLIC /TP /EHsc)
+        target_include_directories(${whatIsBuilding}_testsonly_lib PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
+        target_compile_definitions(${whatIsBuilding}_testsonly_lib PUBLIC -DCPP_UNITTEST)
+        target_compile_options(${whatIsBuilding}_testsonly_lib PUBLIC /TP /EHsc)
 
-    add_library(${whatIsBuilding}_dll SHARED
-        ${${whatIsBuilding}_cpp_files}
-        ${${whatIsBuilding}_h_files}
-        ${${whatIsBuilding}_c_files}
-        ${logging_files}
-    )
+        add_library(${whatIsBuilding}_dll SHARED
+            ${${whatIsBuilding}_cpp_files}
+            ${${whatIsBuilding}_h_files}
+            ${${whatIsBuilding}_c_files}
+            ${logging_files}
+        )
 
-    set_target_properties(${whatIsBuilding}_dll
-               PROPERTIES
-               FOLDER ${folder} )
+        set_target_properties(${whatIsBuilding}_dll
+                   PROPERTIES
+                   FOLDER ${folder} )
 
-    target_include_directories(${whatIsBuilding}_dll PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
-    target_compile_definitions(${whatIsBuilding}_dll PUBLIC -DCPP_UNITTEST)
-    target_link_libraries(${whatIsBuilding}_dll micromock_cpp_unittest umock_c ctest testrunnerswitcher ${whatIsBuilding}_testsonly_lib )
+        target_include_directories(${whatIsBuilding}_dll PUBLIC ${sharedutil_include_directories} $ENV{VCInstallDir}UnitTest/include)
+        target_compile_definitions(${whatIsBuilding}_dll PUBLIC -DCPP_UNITTEST)
+        target_link_libraries(${whatIsBuilding}_dll umock_c ctest testrunnerswitcher ${whatIsBuilding}_testsonly_lib )
 
-    set(PARSING_ADDITIONAL_LIBS OFF)
-    set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
-    set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER)
-    foreach(f ${ARGN})
-        set(skip_to_next FALSE)
-        if(${f} STREQUAL "ADDITIONAL_LIBS")
-            SET(PARSING_ADDITIONAL_LIBS ON)
-            SET(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
-            #also unset all the other states
-            set(skip_to_next TRUE)
-        elseif(${f} STREQUAL "VALGRIND_SUPPRESSIONS_FILE")
-            SET(PARSING_ADDITIONAL_LIBS OFF)
-            SET(PARSING_VALGRIND_SUPPRESSIONS_FILE ON)
-            set(skip_to_next TRUE)
-        endif()
-
-        if(NOT skip_to_next)
-            if(PARSING_ADDITIONAL_LIBS)
-                target_link_libraries(${whatIsBuilding}_dll ${f})
+        set(PARSING_ADDITIONAL_LIBS OFF)
+        set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
+        set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER)
+        foreach(f ${ARGN})
+            set(skip_to_next FALSE)
+            if(${f} STREQUAL "ADDITIONAL_LIBS")
+                SET(PARSING_ADDITIONAL_LIBS ON)
+                SET(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
+                #also unset all the other states
+                set(skip_to_next TRUE)
+            elseif(${f} STREQUAL "VALGRIND_SUPPRESSIONS_FILE")
+                SET(PARSING_ADDITIONAL_LIBS OFF)
+                SET(PARSING_VALGRIND_SUPPRESSIONS_FILE ON)
+                set(skip_to_next TRUE)
             endif()
-        endif()
 
-    endforeach()
+            if(NOT skip_to_next)
+                if(PARSING_ADDITIONAL_LIBS)
+                    target_link_libraries(${whatIsBuilding}_dll ${f})
+                endif()
+            endif()
 
-    SET(SPACES " ")
-    SET(VAR 1)
-    foreach(file ${${whatIsBuilding}_test_files})
+        endforeach()
 
-        # for x64 the underscore is not needed
-        if (ARCHITECTURE STREQUAL "x86_64")
-            set_property(TARGET ${whatIsBuilding}_dll APPEND_STRING PROPERTY LINK_FLAGS ${SPACES}/INCLUDE:"some_symbol_for_cppunittest_${VAR}")
-        else()
-            set_property(TARGET ${whatIsBuilding}_dll APPEND_STRING PROPERTY LINK_FLAGS ${SPACES}/INCLUDE:"_some_symbol_for_cppunittest_${VAR}")
-        endif()
-        MATH(EXPR VAR "${VAR}+1")
-    endforeach()
+        SET(SPACES " ")
+        SET(VAR 1)
+        foreach(file ${${whatIsBuilding}_test_files})
+
+            # for x64 the underscore is not needed
+            if (ARCHITECTURE STREQUAL "x86_64")
+                set_property(TARGET ${whatIsBuilding}_dll APPEND_STRING PROPERTY LINK_FLAGS ${SPACES}/INCLUDE:"some_symbol_for_cppunittest_${VAR}")
+            else()
+                set_property(TARGET ${whatIsBuilding}_dll APPEND_STRING PROPERTY LINK_FLAGS ${SPACES}/INCLUDE:"_some_symbol_for_cppunittest_${VAR}")
+            endif()
+            MATH(EXPR VAR "${VAR}+1")
+        endforeach()
+    endif()
 endfunction()
 
 function(c_windows_unittests_add_exe whatIsBuilding folder)
@@ -310,7 +314,7 @@ function(c_windows_unittests_add_exe whatIsBuilding folder)
 
     target_compile_definitions(${whatIsBuilding}_exe PUBLIC -DUSE_CTEST)
     target_include_directories(${whatIsBuilding}_exe PUBLIC ${sharedutil_include_directories})
-    target_link_libraries(${whatIsBuilding}_exe micromock_ctest umock_c ctest testrunnerswitcher)
+    target_link_libraries(${whatIsBuilding}_exe umock_c ctest testrunnerswitcher)
 
     set(PARSING_ADDITIONAL_LIBS OFF)
     set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
@@ -391,7 +395,7 @@ function(c_linux_unittests_add_exe whatIsBuilding folder)
 
     endforeach()
 
-    target_link_libraries(${whatIsBuilding}_exe micromock_ctest umock_c ctest)
+    target_link_libraries(${whatIsBuilding}_exe umock_c ctest)
 
     add_test(NAME ${whatIsBuilding} COMMAND $<TARGET_FILE:${whatIsBuilding}_exe>)
 
