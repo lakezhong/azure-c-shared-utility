@@ -5,6 +5,7 @@
 #include <cstdlib>
 #else
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 #endif
 /**
@@ -36,7 +37,16 @@ void my_gballoc_free(void* ptr)
 #else
 #include <stddef.h>
 #include <time.h>
+
 #endif
+
+ // WIN32 sockets are incompatible with other OS socket function signatures
+#ifdef WIN32
+ // Just use this header for convenience while writing the code in Windows. Later it will
+ // only run for Linux variants.
+#include "fake_win32_socket.h"
+#endif
+
 
 /**
  * Include the test tools.
@@ -66,26 +76,32 @@ void my_gballoc_free(void* ptr)
 
 #include "test_points.h"
 
-/**
- * Include the target header after the ENABLE_MOCKS session.
- */
-//#include "target/target.h"
+static int test_socket = (int)0x4243;
+int fcntl(int fd, int cmd, int arg) { fd; cmd; arg; return 0; }
 
 
-/**
- * If your test need constants, this is a good place to define it. For examples:
- *
- * #define TEST_CREATE_CONNECTION_HOST_NAME (const char*)"https://test.azure-devices.net"
- *
- * static const char* SendBuffer = "Message to send";
- *
- */
-//#define SIZEOF_FOO_MEMORY   10
 
- /**
-  * You can create some global variables that your test will need in some way.
-  */
-//static void* g_GenericPointer;
+MOCK_FUNCTION_WITH_CODE(, int, socket, int, af, int, type, int, protocol)
+MOCK_FUNCTION_END(test_socket)
+MOCK_FUNCTION_WITH_CODE(, int, bind, int, sockfd, const struct sockaddr*, addr, size_t, addrlen)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, getsockopt, int, sockfd, int, level, int, optname, void*, optval, size_t*, optlen)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, size_t, optlen)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, connect, int, sockfd, const struct sockaddr*, addr, size_t, addrlen)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, send, int, sockfd, const void*, buf, size_t, len, int, flags)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, recv, int, sockfd, void*, buf, size_t, len, int, flags)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, FD_ISSET, int, sockfd, void*, dummy)
+MOCK_FUNCTION_END(0)
+MOCK_FUNCTION_WITH_CODE(, int, close, int, sockfd)
+MOCK_FUNCTION_END(0)
+
 
  /**
   * Umock error will helps you to identify errors in the test suite or in the way that you are 

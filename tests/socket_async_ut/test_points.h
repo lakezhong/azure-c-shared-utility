@@ -7,7 +7,7 @@
 
 
 // This is a list of all the possible test points plus the various happy paths for a 
-// create/open/close/destroy sequence. 
+// create/read/write/destroy sequence. 
 // Test points that look like XXXXX_OK are actually a success path. If there is no
 // "_OK" in the name, then that test point is an expected failure.
 // Test points that look like XXXXX_1 or XXXXX_OK_1 are one of a group of different ways

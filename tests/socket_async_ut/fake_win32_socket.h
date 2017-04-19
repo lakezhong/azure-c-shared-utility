@@ -2,6 +2,9 @@
 #ifndef TEST_SOCKET_H
 #define TEST_SOCKET_H
 
+// This file enables testing of these Linux-oriented unit tests under Windows. It is not 
+// strictly necessary, but is convenient to have.
+
 #ifdef __cplusplus
 extern "C" {
 #endif
