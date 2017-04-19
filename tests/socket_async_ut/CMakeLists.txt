@@ -14,9 +14,10 @@ set(${theseTestsName}_c_files
 ../../adapters/socket_async.c
 )
 
-set(${theseTestsName}_h_files
-)
-
 include_directories(.)
+
+set(${theseTestsName}_h_files
+test_points.h
+)
 
 build_c_test_artifacts(${theseTestsName} ON "tests/azure_c_shared_utility_tests")

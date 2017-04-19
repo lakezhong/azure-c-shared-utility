@@ -5,8 +5,8 @@
 #include <cstdlib>
 #else
 #include <stdlib.h>
+#include <stdbool.h>
 #endif
-
 /**
  * The gballoc.h will replace the malloc, free, and realloc by the my_gballoc functions, in this case,
  *    if you define these mock functions after include the gballoc.h, you will create an infinity recursion,
@@ -63,6 +63,8 @@ void my_gballoc_free(void* ptr)
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
 #undef ENABLE_MOCKS
+
+#include "test_points.h"
 
 /**
  * Include the target header after the ENABLE_MOCKS session.

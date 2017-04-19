@@ -15,16 +15,14 @@
 #include <sys/socket.h>
 #endif // LINUX
 
-// WIN32 sockets are incompatible with other OS socket function signatures,
-// so this adapter isn't designed to function under Windows. 
-// This frees Windows builds to be used mainly for negative unit testing.
-// Linux can check positive functionality, and others will just
-// verify that they compile.
+// WIN32 sockets are incompatible with other OS socket function signatures
 #ifdef WIN32
-#include "win32_header.h"
+// Just use this header for convenience while writing the code in Windows. Later it will
+// only run for Linux variants.
+#include "fake_win32_socket.h"
 #endif
 
-#include "azure_c_shared_utility/ssl_socket.h"
+#include "azure_c_shared_utility/socket_async.h"
 #include "azure_c_shared_utility/xlogging.h"
 
 #define AZURE_SSL_SOCKET_SO_KEEPALIVE 1    /* enable keepalive */
@@ -53,42 +51,72 @@ static int get_socket_errno(int fd)
     return sock_errno;
 }
 
-int SSL_Socket_Create(uint32_t serverIPv4, uint16_t port)
+int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint16_t port, 
+    bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options)
 {
-    int result = -1;
-    int ret;
-    int sock = -1;
+    int result;
+    int sock;
+    *sock_out = SOCKET_ASYNC_NULL_SOCKET;
 
     struct sockaddr_in sock_addr;
 
     if (serverIPv4 != 0)
     {
-        sock = socket(AF_INET, SOCK_STREAM, 0);
+        sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
         if (sock < 0)
         {
             LogError("create socket failed");
+            result = __FAILURE__;
         }
         else
         {
-            int keepAlive = 1; //enable keepalive
-            int keepIdle = 20; //20s
-            int keepInterval = 2; //2s
-            int keepCount = 3; //retry # of times
+            int setopt_ret = 0;
+            // None of the currently defined options apply to UDP
+            if (!is_UDP)
+            {
+                bool disable_keepalive;  // disable by default
+                if (options != NULL)
+                {
+                    if (options->keep_alive > 0)
+                    {
+                        int keepAlive = 1; //enable keepalive
+                        setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&(options->keep_idle), sizeof((options->keep_idle)));
+                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&(options->keep_interval), sizeof((options->keep_interval)));
+                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&(options->keep_count), sizeof((options->keep_count)));
+                        disable_keepalive = false;
+                    }
+                    else if (options->keep_alive == 0)
+                    {
+                        disable_keepalive = true;
+                    }
+                    else
+                    {
+                        // < 0 means use system defaults, so do nothing
+                        disable_keepalive = false;
+                    }
+                }
+                else
+                {
+                    disable_keepalive = true;
+                }
 
-            ret = 0;
-            ret = ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
-            ret = ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle));
-            ret = ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval));
-            ret = ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount));
+                if (disable_keepalive)
+                {
+                    int keepAlive = 0; //disable keepalive
+                    setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                }
+            }
 
             // NB: On full-sized (multi-process) systems it would be necessary to use the SO_REUSEADDR option to 
             // grab the socket from any earlier (dying) invocations of the process and then deal with any 
             // residual junk in the connection stream. This doesn't happen with embedded, so it doesn't need
             // to be defended against.
 
-            if (ret != 0)
+            if (setopt_ret != 0)
             {
-                LogError("set socket keep-alive failed, ret = %d ", ret);
+                LogError("setsockopt failed: %d ", setopt_ret);
+                result = __FAILURE__;
             }
             else
             {
@@ -103,11 +131,12 @@ int SSL_Socket_Create(uint32_t serverIPv4, uint16_t port)
                 sock_addr.sin_addr.s_addr = 0;
                 sock_addr.sin_port = 0; // random local port
 
-                ret = bind(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+                int bind_ret = bind(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
 
-                if (ret)
+                if (bind_ret)
                 {
                     LogError("bind socket failed");
+                    result = __FAILURE__;
                 }
                 else
                 {
@@ -117,72 +146,94 @@ int SSL_Socket_Create(uint32_t serverIPv4, uint16_t port)
                     sock_addr.sin_addr.s_addr = serverIPv4;
                     sock_addr.sin_port = htons(port);
 
-                    ret = connect(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
-                    if (ret == -1)
+                    int connect_ret = connect(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+                    if (connect_ret == -1)
                     {
                         int sockErr = get_socket_errno(sock);
                         if (sockErr != EINPROGRESS)
                         {
                             LogError("Socket connect failed, not EINPROGRESS: %d", sockErr);
+                            result = __FAILURE__;
                         }
                         else
                         {
                             // This is the normally expected code path for our non-blocking socket
-                            // Wait for the write socket to be ready to perform a write.
-                            fd_set writeset;
-                            fd_set errset;
-                            FD_ZERO(&writeset);
-                            FD_ZERO(&errset);
-                            FD_SET(sock, &writeset);
-                            FD_SET(sock, &errset);
-
-
-                            ret = select(sock + 1, NULL, &writeset, &errset, timeout);
-                            if (ret <= 0)
-                            {
-                                LogError("Select failed: %d", get_socket_errno(sock));
-                            }
-                            else
-                            {
-                                if (FD_ISSET(sock, &errset))
-                                {
-                                    LogError("Socket select error is set: %d", get_socket_errno(sock));
-                                }
-                                else if (FD_ISSET(sock, &writeset))
-                                {
-                                    // Everything worked as expected, so set the result to our good socket
-                                    result = sock;
-                                }
-                                else
-                                {
-                                    // not possible, so not worth the space for logging
-                                }
-                            }
+                            result = 0;
+                            *sock_out = sock;
                         }
                     }
                     else
                     {
-                        // This result would be a big surprise because a non-blocking socket
-                        // should always return EINPROGRESS
-                        result = sock;
+                        // This result would be a surprise because a non-blocking socket
+                        // should return EINPROGRESS. But it could happen if this thread got
+                        // blocked for a while by the system while the handshake proceeded.
+                        result = 0;
+                        *sock_out = sock;
                     }
                 }
             }
         }
     }
 
-    if (sock >= 0 && result < 0)
-    {
-        SSL_Socket_Close(sock);
-    }
     return result;
 }
 
-void SSL_Socket_Close(int sock)
+int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
+{
+    int result;
+    if (is_complete == NULL)
+    {
+        LogError("Null is_complete");
+        result = __FAILURE__;
+    }
+    else
+    {
+        is_complete = false;
+
+        // Check if the socket is ready to perform a write.
+        fd_set writeset;
+        fd_set errset;
+        FD_ZERO(&writeset);
+        FD_ZERO(&errset);
+        FD_SET(sock, &writeset);
+        FD_SET(sock, &errset);
+
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_sec = 0;
+        int select_ret = select(sock + 1, NULL, &writeset, &errset, &tv);
+        if (select_ret <= 0)
+        {
+            LogError("Socket select failed: %d", get_socket_errno(sock));
+            result = __FAILURE__;
+        }
+        else
+        {
+            if (FD_ISSET(sock, &errset))
+            {
+                LogError("Socket select errset non-empty: %d", get_socket_errno(sock));
+                result = __FAILURE__;
+            }
+            else if (FD_ISSET(sock, &writeset))
+            {
+                // Everything worked as expected, so set the result to our good socket
+                result = 0;
+                is_complete = true;
+            }
+            else
+            {
+                // not possible, so not worth the space for logging
+            }
+        }
+    }
+}
+
+void socket_async_destroy(int sock)
 {
     close(sock);
 }
 
+#if(0)
 uint32_t SSL_Get_IPv4(const char* hostname)
 {
     struct addrinfo *addrInfo = NULL;
@@ -222,4 +273,5 @@ uint32_t SSL_Get_IPv4(const char* hostname)
 
     return result;
 }
+#endif
 
