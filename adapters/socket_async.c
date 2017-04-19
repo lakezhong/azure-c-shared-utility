@@ -57,10 +57,14 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
     int result;
     int sock;
     *sock_out = SOCKET_ASYNC_NULL_SOCKET;
-
     struct sockaddr_in sock_addr;
 
-    if (serverIPv4 != 0)
+    if (sock_out == NULL)
+    {
+        LogError("sock_out is NULL");
+        result = __FAILURE__;
+    }
+    else
     {
         sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
         if (sock < 0)
@@ -165,8 +169,9 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
                     else
                     {
                         // This result would be a surprise because a non-blocking socket
-                        // should return EINPROGRESS. But it could happen if this thread got
-                        // blocked for a while by the system while the handshake proceeded.
+                        // returns EINPROGRESS. But it could happen if this thread got
+                        // blocked for a while by the system while the handshake proceeded,
+                        // or for a UDP socket.
                         result = 0;
                         *sock_out = sock;
                     }
@@ -183,7 +188,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
     int result;
     if (is_complete == NULL)
     {
-        LogError("Null is_complete");
+        LogError("is_complete is NULL");
         result = __FAILURE__;
     }
     else
@@ -218,14 +223,106 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
             {
                 // Everything worked as expected, so set the result to our good socket
                 result = 0;
-                is_complete = true;
+                *is_complete = true;
             }
             else
             {
-                // not possible, so not worth the space for logging
+                // not possible, so not worth the space for logging; just quiet the compiler
+                result = __FAILURE__;
             }
         }
     }
+    return result;
+}
+
+int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* sent_count)
+{
+    int result;
+    if (buffer == NULL)
+    {
+        LogError("buffer is NULL");
+        result = __FAILURE__;
+    }
+    else
+    {
+        if (sent_count == NULL)
+        {
+            LogError("sent_count is NULL");
+            result = __FAILURE__;
+        }
+        else
+        {
+            int send_result = send(sock, buffer, size, 0);
+            if (send_result < 0)
+            {
+                *sent_count = 0;
+                int sock_err = get_socket_errno(sock);
+                if (sock_err == EAGAIN || sock_err == EWOULDBLOCK)
+                {
+                    // Nothing sent, try again later
+                    result = 0;
+                }
+                else
+                {
+                    // Something bad happened
+                    LogError("Unexpected send error: %d", sock_err);
+                    result = __FAILURE__;
+                }
+            }
+            else
+            {
+                // Sent at least part of the message
+                result = 0;
+                *sent_count = (size_t)send_result;
+            }
+        }
+    }
+    return result;
+}
+
+int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* received_count)
+{
+    int result;
+    if (buffer == NULL)
+    {
+        LogError("buffer is NULL");
+        result = __FAILURE__;
+    }
+    else
+    {
+        if (received_count == NULL)
+        {
+            LogError("received_count is NULL");
+            result = __FAILURE__;
+        }
+        else
+        {
+            int recv_result = recv(sock, buffer, size, 0);
+            if (recv_result < 0)
+            {
+                *received_count = 0;
+                int sock_err = get_socket_errno(sock);
+                if (sock_err == EAGAIN || sock_err == EWOULDBLOCK)
+                {
+                    // Nothing received, try again later
+                    result = 0;
+                }
+                else
+                {
+                    // Something bad happened
+                    LogError("Unexpected recv error: %d", sock_err);
+                    result = __FAILURE__;
+                }
+            }
+            else
+            {
+                // Received some stuff
+                result = 0;
+                *received_count = (size_t)recv_result;
+            }
+        }
+    }
+    return result;
 }
 
 void socket_async_destroy(int sock)

@@ -77,6 +77,10 @@ extern "C" {
 
     int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
+    int send(int sockfd, const void *buf, size_t len, int flags);
+
+    int recv(int sockfd, void *buf, size_t len, int flags);
+
     int close(int fd);
 
     int FD_ISSET(int sock, void* dummy);
