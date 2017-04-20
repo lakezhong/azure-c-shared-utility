@@ -195,14 +195,12 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
     int result;
     if (is_complete == NULL)
     {
-        /* Codes_SRS_SOCKET_ASYNC_30_025: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
+        /* Codes_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
         LogError("is_complete is NULL");
         result = __FAILURE__;
     }
     else
     {
-        is_complete = false;
-
         // Check if the socket is ready to perform a write.
         fd_set writeset;
         fd_set errset;
@@ -215,7 +213,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         tv.tv_sec = 0;
         tv.tv_sec = 0;
         int select_ret = select(sock + 1, NULL, &writeset, &errset, &tv);
-        if (select_ret <= 0)
+        if (select_ret < 0)
         {
             /* Codes_SRS_SOCKET_ASYNC_30_027: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
             LogError("Socket select failed: %d", get_socket_errno(sock));

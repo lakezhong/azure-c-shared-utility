@@ -165,6 +165,11 @@ BEGIN_TEST_SUITE(socket_async_ut)
         REGISTER_GLOBAL_MOCK_RETURNS(bind, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(connect, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(setsockopt, 0, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(select, 0, -1);
+        // FD_ISSET is just a bool-ish function. It's convenient to use 0 as the 
+        // success case and 1 as fail because sometimes it's checking an error set
+        // and "success" == empty == 0
+        REGISTER_GLOBAL_MOCK_RETURNS(FD_ISSET, 0, 1);
 
         REGISTER_GLOBAL_MOCK_HOOK(setsockopt, my_setsockopt);
 
@@ -236,7 +241,27 @@ BEGIN_TEST_SUITE(socket_async_ut)
             int negativeTestsInitResult = umock_c_negative_tests_init();
             ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
-
+            // The socket_async_create test points
+            //// Create UDP
+            // TP_NULL_SOCK_HANDLE_FAIL,	// supplying a null pointer to socket handle
+            // TP_UDP_SOCKET_FAIL,			// socket create fail
+            // TP_UDP_BIND_FAIL,			// socket bind fail
+            // TP_UDP_CONNECT_FAIL,		// socket connect fail
+            // TP_UDP_CONNECT_IN_PROGRESS,	// socket connect in progress
+            // TP_UDP_CONNECT_SUCCESS,     // socket connect instant success
+            //// Create TCP
+            // TP_TCP_SOCKET_FAIL,			// socket create fail
+            // TP_TCP_SOCKET_OPT_0_FAIL,   // setsockopt set keep-alive fail 0
+            // TP_TCP_SOCKET_OPT_1_FAIL,   // setsockopt set keep-alive fail 1
+            // TP_TCP_SOCKET_OPT_2_FAIL,   // setsockopt set keep-alive fail 2
+            // TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
+            // TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
+            // TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
+            // TP_TCP_BIND_FAIL,			// socket bind fail
+            // TP_TCP_CONNECT_FAIL,		// socket connect fail
+            // TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
+            // TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
+            //
             if (test_point <= TP_UDP_CONNECT_SUCCESS)
             {
                 // The UDP Create test points
@@ -283,6 +308,28 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
             }
 
+            // The socket_async_is_create_complete test points
+            switch (test_point)
+            {
+            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
+                TEST_POINT(TP_TCP_IS_COMPLETE_SELECT_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+                break;
+            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_ERRSET_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+                TEST_POINT(TP_TCP_IS_COMPLETE_ERRSET_FAIL, FD_ISSET(test_socket, IGNORED_PTR_ARG));
+                break;
+            case TP_TCP_IS_COMPLETE_READY_OK:
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
+                TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
+                break;
+            default:
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
+                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
+                break;
+            }
+
 
 
             umock_c_negative_tests_snapshot();
@@ -303,6 +350,30 @@ BEGIN_TEST_SUITE(socket_async_ut)
             //////////////////////////////////////////////////////////////////////////////////////////////////////
             //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // The socket_async_create test points
+            //// Create UDP
+            // TP_NULL_SOCK_HANDLE_FAIL,	// supplying a null pointer to socket handle
+            // TP_UDP_SOCKET_FAIL,			// socket create fail
+            // TP_UDP_BIND_FAIL,			// socket bind fail
+            // TP_UDP_CONNECT_FAIL,		// socket connect fail
+            // TP_UDP_CONNECT_IN_PROGRESS,	// socket connect in progress
+            // TP_UDP_CONNECT_SUCCESS,     // socket connect instant success
+            //// Create TCP
+            // TP_TCP_SOCKET_FAIL,			// socket create fail
+            // TP_TCP_SOCKET_OPT_0_FAIL,   // setsockopt set keep-alive fail 0
+            // TP_TCP_SOCKET_OPT_1_FAIL,   // setsockopt set keep-alive fail 1
+            // TP_TCP_SOCKET_OPT_2_FAIL,   // setsockopt set keep-alive fail 2
+            // TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
+            // TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
+            // TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
+            // TP_TCP_BIND_FAIL,			// socket bind fail
+            // TP_TCP_CONNECT_FAIL,		// socket connect fail
+            // TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
+            // TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
+            //
             SOCKET_ASYNC_HANDLE sock = 0;
             SOCKET_ASYNC_HANDLE* handle = test_point == TP_NULL_SOCK_HANDLE_FAIL ? NULL : &sock;
 
@@ -313,7 +384,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 options = &options_value;
             }
             int create_result = socket_async_create(handle, 0, 0, is_UDP, options);
-            create_result;
 
             // Does create_result match expectations?
             switch (test_point)
@@ -333,13 +403,14 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_SOCKET_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
             case TP_TCP_BIND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
             case TP_TCP_CONNECT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-
                 if (create_result == 0)
                 {
                     ASSERT_FAIL("Unexpected create_result success");
                 }
                 break;
-            default:                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
+
+            /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
+            default:
                 if (create_result != 0)
                 {
                     ASSERT_FAIL("Unexpected create_result failure");
@@ -378,7 +449,9 @@ BEGIN_TEST_SUITE(socket_async_ut)
                     ASSERT_FAIL("Unexpected returned sock value");
                 }
                 break;
-            default:                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
+
+            /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
+            default:
                 if (sock != test_socket)
                 {
                     ASSERT_FAIL("Unexpected returned sock value");
@@ -414,6 +487,56 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 // The default cases here are all TCP
                 ASSERT_KEEP_ALIVE_FALSE();
                 break;
+            }
+            // end socket_async_create
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+            if (test_point >= TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL)
+            {
+                // Set is_complete to the opposite of what's expected so we can spot a change
+                bool is_complete = test_point != TP_TCP_IS_COMPLETE_READY_OK;
+                bool* is_complete_param = test_point == TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL ? NULL : &is_complete;
+
+                int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
+
+                // Does create_complete_result match expectations?
+                switch (test_point)
+                {
+                case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
+                case TP_TCP_IS_COMPLETE_SELECT_FAIL:
+                case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
+                    if (create_complete_result == 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned create_complete_result value");
+                    }
+                    break;
+                default:
+                    if (create_complete_result != 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned create_complete_result value");
+                    }
+                    break;
+                }
+
+                // Does is_compete match expectations?
+                switch (test_point)
+                {
+                case TP_TCP_IS_COMPLETE_NOT_READY_OK:
+                    if (is_complete)
+                    {
+                        ASSERT_FAIL("Unexpected returned is_complete value");
+                    }
+                    break;
+                case TP_TCP_IS_COMPLETE_READY_OK:
+                    if (!is_complete)
+                    {
+                        ASSERT_FAIL("Unexpected returned is_complete value");
+                    }
+                    break;
+                }
             }
 
 

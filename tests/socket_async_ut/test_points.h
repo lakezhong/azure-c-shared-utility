@@ -30,16 +30,19 @@ enum
     TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
     TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
     TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
-
-
     TP_TCP_BIND_FAIL,			// socket bind fail
     TP_TCP_CONNECT_FAIL,		// socket connect fail
     TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
     TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
 
-    // Destroy
-    TP_Destroy_NULL_TLSIO_FAIL,     // Call destroy null tlsio
-    TP_Destroy_without_close_OK,    // Call destroy without calling close first
+    // Is create complete
+    TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
+    TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
+    TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+    TP_TCP_IS_COMPLETE_READY_OK,        // 
+    TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+
+    // Destroy is a pass-thru, and not really testable
     // NOTE!!!! Update test_point_names below when adding to this enum
     TP_FINAL_OK     // Always keep as last entry
 };
@@ -78,9 +81,15 @@ static X test_point_names[] =
     TEST_POINT_NAME(TP_TCP_CONNECT_IN_PROGRESS)
     TEST_POINT_NAME(TP_TCP_CONNECT_SUCCESS)
 
-    // Destroy
-    TEST_POINT_NAME(TP_Destroy_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_Destroy_without_close_OK)
+    // Is create complete
+    TEST_POINT_NAME(TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL)
+    TEST_POINT_NAME(TP_TCP_IS_COMPLETE_SELECT_FAIL)
+    TEST_POINT_NAME(TP_TCP_IS_COMPLETE_ERRSET_FAIL)
+    TEST_POINT_NAME(TP_TCP_IS_COMPLETE_READY_OK)
+    TEST_POINT_NAME(TP_TCP_IS_COMPLETE_NOT_READY_OK)
+
+
+    // Destroy is a pass-thru, and not really testable
     TEST_POINT_NAME(TP_FINAL_OK)
 };
 
