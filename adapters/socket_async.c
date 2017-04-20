@@ -70,6 +70,7 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
         sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
         if (sock < 0)
         {
+            /* Codes_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
             // An essentially impossible failure, not worth logging errno()
             LogError("create socket failed");
             *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
@@ -194,6 +195,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
     int result;
     if (is_complete == NULL)
     {
+        /* Codes_SRS_SOCKET_ASYNC_30_025: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
         LogError("is_complete is NULL");
         result = __FAILURE__;
     }
@@ -215,6 +217,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         int select_ret = select(sock + 1, NULL, &writeset, &errset, &tv);
         if (select_ret <= 0)
         {
+            /* Codes_SRS_SOCKET_ASYNC_30_027: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
             LogError("Socket select failed: %d", get_socket_errno(sock));
             result = __FAILURE__;
         }
@@ -222,19 +225,23 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         {
             if (FD_ISSET(sock, &errset))
             {
+                /* Codes_SRS_SOCKET_ASYNC_30_027: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
                 LogError("Socket select errset non-empty: %d", get_socket_errno(sock));
                 result = __FAILURE__;
             }
             else if (FD_ISSET(sock, &writeset))
             {
-                // Everything worked as expected, so set the result to our good socket
+                /* Codes_SRS_SOCKET_ASYNC_30_026: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                // Ready to read
                 result = 0;
                 *is_complete = true;
             }
             else
             {
-                // not possible, so not worth the space for logging; just quiet the compiler
-                result = __FAILURE__;
+                /* Codes_SRS_SOCKET_ASYNC_30_026: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                // Not ready yet
+                result = 0;
+                *is_complete = false;
             }
         }
     }

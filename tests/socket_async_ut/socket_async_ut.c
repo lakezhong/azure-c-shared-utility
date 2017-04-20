@@ -318,11 +318,10 @@ BEGIN_TEST_SUITE(socket_async_ut)
             // Does create_result match expectations?
             switch (test_point)
             {
-            case TP_NULL_SOCK_HANDLE_FAIL:
-            case TP_UDP_SOCKET_FAIL:
-            case TP_UDP_BIND_FAIL:
-            case TP_UDP_CONNECT_FAIL:
-            case TP_TCP_SOCKET_FAIL:
+            case TP_NULL_SOCK_HANDLE_FAIL:  /* Tests_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_UDP_SOCKET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_UDP_BIND_FAIL:          /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_UDP_CONNECT_FAIL:       /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
 
             /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
             case TP_TCP_SOCKET_OPT_0_FAIL:
@@ -331,21 +330,18 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_SOCKET_OPT_3_FAIL:
             case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
 
-             /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            case TP_TCP_BIND_FAIL:
+            case TP_TCP_SOCKET_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_TCP_BIND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_TCP_CONNECT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
 
-            /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            case TP_TCP_CONNECT_FAIL:
                 if (create_result == 0)
                 {
-                    /* Tests_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
                     ASSERT_FAIL("Unexpected create_result success");
                 }
                 break;
-            default:
+            default:                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
                 if (create_result != 0)
                 {
-                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
                     ASSERT_FAIL("Unexpected create_result failure");
                 }
                 break;
@@ -354,16 +350,18 @@ BEGIN_TEST_SUITE(socket_async_ut)
             // Does the returned socket handle match expectations?
             switch (test_point)
             {
+            /* Tests_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
             case TP_NULL_SOCK_HANDLE_FAIL:
                 if (sock != 0)
                 {
                     ASSERT_FAIL("Unexpected returned sock value");
                 }
                 break;
-            case TP_UDP_SOCKET_FAIL:
-            case TP_UDP_BIND_FAIL:
-            case TP_UDP_CONNECT_FAIL:
-            case TP_TCP_SOCKET_FAIL:
+
+            case TP_UDP_SOCKET_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_UDP_BIND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_UDP_CONNECT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_TCP_SOCKET_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
 
             /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
             case TP_TCP_SOCKET_OPT_0_FAIL:
@@ -372,20 +370,17 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_SOCKET_OPT_3_FAIL:
             case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
 
-            /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            case TP_TCP_BIND_FAIL:
+            case TP_TCP_BIND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+            case TP_TCP_CONNECT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
 
-            /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            case TP_TCP_CONNECT_FAIL:
                 if (sock != SOCKET_ASYNC_INVALID_SOCKET)
                 {
                     ASSERT_FAIL("Unexpected returned sock value");
                 }
                 break;
-            default:
+            default:                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
                 if (sock != test_socket)
                 {
-                    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
                     ASSERT_FAIL("Unexpected returned sock value");
                 }
                 break;
@@ -394,6 +389,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             // Do the keep-alive values match expectations?
             switch (test_point)
             {
+            /* Tests_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
             case TP_NULL_SOCK_HANDLE_FAIL:
             case TP_UDP_SOCKET_FAIL:
             case TP_UDP_BIND_FAIL:
@@ -403,7 +399,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_SOCKET_FAIL:
             case TP_TCP_SOCKET_OPT_0_FAIL:
             case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
-                /* Tests_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
                 ASSERT_KEEP_ALIVE_UNTOUCHED();
                 break;
             case TP_TCP_SOCKET_OPT_1_FAIL:
@@ -412,13 +407,11 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 // These are various uninteresting intermediate states of failing to fully
                 // set keep-alive values, and are not worth separate testing.
                 break;
-            case TP_TCP_SOCKET_OPT_SET_OK:
-                /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
+            case TP_TCP_SOCKET_OPT_SET_OK:  /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
                 ASSERT_KEEP_ALIVE_SET();
                 break;
-            default:
+            default:    /* Tests_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
                 // The default cases here are all TCP
-                /* Tests_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
                 ASSERT_KEEP_ALIVE_FALSE();
                 break;
             }
