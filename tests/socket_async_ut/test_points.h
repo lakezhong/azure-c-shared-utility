@@ -14,52 +14,24 @@
 // to either succeed or fail at that test point
 enum
 {
-    // Create
-    TP_NULL_CONFIG_FAIL,	    // supplying a null tlsio config to create
-    TP_DNS_FAIL,			    // DNS lookup fails
-    TP_TLSIO_MALLOC_FAIL,	    // tlsio instance malloc fails
+    // Create UDP
+    TP_NULL_SOCK_HANDLE_FAIL,	// supplying a null pointer to socket handle
+    TP_UDP_SOCKET_FAIL,			// socket create fail
+    TP_UDP_BIND_FAIL,			// socket bind fail
+    TP_UDP_CONNECT_FAIL,		// socket connect fail
+    TP_UDP_CONNECT_IN_PROGRESS,	// socket connect in progress
+    TP_UDP_CONNECT_SUCCESS,     // socket connect instant success
 
-    // Open
-    TP_OPEN_NULL_TLSIO_FAIL,	// tlsio_openssl_open with null tlsio
-    TP_OPEN_NULL_BYTES_R_FAIL,	// tlsio_openssl_open with null on_bytes_received
-    TP_OPEN_NULL_ON_ERROR_FAIL,	// tlsio_openssl_open with null on_io_error
-    TP_SOCKET_OPEN_FAIL,	    // creation of the TLS socket fails
-    TP_SSL_CTX_new_FAIL,	    // SSL_CTX_new fails
-    TP_SSL_new_FAIL,		    // SSL_new fails
-    TP_SSL_set_fd_FAIL,		    // SSL_set_fd fails
-    TP_SSL_connect_TIMEOUT_FAIL,    // SSL_connect fails with timeout
-    TP_SSL_connect_0_FAIL,	    // SSL_connect fails with failure sequence 0
-    TP_SSL_connect_1_FAIL,	    // SSL_connect fails with failure sequence 1
-    TP_SSL_connect_0_OK,	    // SSL_connect fails with success sequence 0
-    TP_SSL_connect_1_OK,	    // SSL_connect fails with success sequence 1
-    TP_Open_no_callback_OK,	    // Open succeeded but no on_open callback privided
-    TP_Open_while_still_open_FAIL,	// Open called while still open
+    // Create TCP
+    TP_TCP_SOCKET_FAIL,			// socket create fail
+    TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
 
-    // Set options
-    TP_SET_OPTION_NULL_TLSIO_FAIL,  // supplying a null tlsio to set_option
-    TP_SET_OPTION_NULL_OPT_NAME_FAIL,   // supplying a null option name to set_option
-    TP_SET_OPTION_NULL_OPT_VALUE_FAIL,  // supplying a null option name to set_option
 
-    // Retrieve options
-    TP_GET_OPTION_NULL_TLSIO_FAIL,  // supplying a null tlsio to retrieve_options
-
-    // Send
-    TP_SEND_NULL_BUFFER_FAIL,	// Send with no read buffer
-    TP_SEND_NULL_TLSIO_FAIL,    // Send with null tlsio
-    TP_SSL_write_TIMEOUT_FAIL,  // Send with timeout failure
-    TP_SSL_write_FAIL,          // SSl_write fails
-    TP_SSL_write_OK,            // SSl_write succeeds
-    TP_Send_no_callback_OK,     // SSl_write succeeds with no callback provided
-    TP_Send_zero_bytes_OK,      // SSl_write succeeds at sending zero bytes
-
-    //Do work
-    TP_SSL_read_NULL_TLSIO_FAIL,    // Do work with null tlsio
-    TP_SSL_read_OK,             // Do work that succeeds
-
-    // Close
-    TP_Close_NULL_TLSIO_FAIL,   // Close with null tlsio
-    TP_Close_no_callback_OK,	// Calling close with no close callback function
-    TP_Close_when_closed_OK,    // Calling close when already closed
+    TP_TCP_BIND_FAIL,			// socket bind fail
+    TP_TCP_CONNECT_FAIL,		// socket connect fail
+    TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
+    TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
+    TP_TCP_SYSTEM_KEEP_ALIVE_SET,   // socket create fail
 
     // Destroy
     TP_Destroy_NULL_TLSIO_FAIL,     // Call destroy null tlsio
@@ -78,52 +50,25 @@ typedef struct X {
 // The list of test_point_names is to help human-readability of the output
 static X test_point_names[] =
 {
-    // Create
-    TEST_POINT_NAME(TP_NULL_CONFIG_FAIL)
-    TEST_POINT_NAME(TP_DNS_FAIL)
-    TEST_POINT_NAME(TP_TLSIO_MALLOC_FAIL)
+    // Null handle pointer
+    TEST_POINT_NAME(TP_NULL_SOCK_HANDLE_FAIL)
 
-    // Open
-    TEST_POINT_NAME(TP_OPEN_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_OPEN_NULL_BYTES_R_FAIL)
-    TEST_POINT_NAME(TP_OPEN_NULL_ON_ERROR_FAIL)
-    TEST_POINT_NAME(TP_SOCKET_OPEN_FAIL)
-    TEST_POINT_NAME(TP_SSL_CTX_new_FAIL)
-    TEST_POINT_NAME(TP_SSL_new_FAIL)
-    TEST_POINT_NAME(TP_SSL_set_fd_FAIL)
-    TEST_POINT_NAME(TP_SSL_connect_TIMEOUT_FAIL)
-    TEST_POINT_NAME(TP_SSL_connect_0_FAIL)
-    TEST_POINT_NAME(TP_SSL_connect_1_FAIL)
-    TEST_POINT_NAME(TP_SSL_connect_0_OK)
-    TEST_POINT_NAME(TP_SSL_connect_1_OK)
-    TEST_POINT_NAME(TP_Open_no_callback_OK)
-    TEST_POINT_NAME(TP_Open_while_still_open_FAIL)
+    // Create UDP
+    TEST_POINT_NAME(TP_UDP_SOCKET_FAIL)
+    TEST_POINT_NAME(TP_UDP_BIND_FAIL)
+    TEST_POINT_NAME(TP_UDP_CONNECT_FAIL)
+    TEST_POINT_NAME(TP_UDP_CONNECT_IN_PROGRESS)
+    TEST_POINT_NAME(TP_UDP_CONNECT_SUCCESS)
 
-    // Set options
-    TEST_POINT_NAME(TP_SET_OPTION_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_SET_OPTION_NULL_OPT_NAME_FAIL)
-    TEST_POINT_NAME(TP_SET_OPTION_NULL_OPT_VALUE_FAIL)
+    // Create TCP
+    TEST_POINT_NAME(TP_TCP_SOCKET_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_DEFAULT_FAIL)
 
-    // Retrieve options
-    TEST_POINT_NAME(TP_GET_OPTION_NULL_TLSIO_FAIL)
-
-    // Send
-    TEST_POINT_NAME(TP_SEND_NULL_BUFFER_FAIL)
-    TEST_POINT_NAME(TP_SEND_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_SSL_write_TIMEOUT_FAIL)
-    TEST_POINT_NAME(TP_SSL_write_FAIL)
-    TEST_POINT_NAME(TP_SSL_write_OK)
-    TEST_POINT_NAME(TP_Send_no_callback_OK)
-    TEST_POINT_NAME(TP_Send_zero_bytes_OK)
-
-    // Do work
-    TEST_POINT_NAME(TP_SSL_read_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_SSL_read_OK)
-
-    // Close
-    TEST_POINT_NAME(TP_Close_NULL_TLSIO_FAIL)
-    TEST_POINT_NAME(TP_Close_no_callback_OK)
-    TEST_POINT_NAME(TP_Close_when_closed_OK)
+    TEST_POINT_NAME(TP_TCP_BIND_FAIL)
+    TEST_POINT_NAME(TP_TCP_CONNECT_FAIL)
+    TEST_POINT_NAME(TP_TCP_CONNECT_IN_PROGRESS)
+    TEST_POINT_NAME(TP_TCP_CONNECT_SUCCESS)
+    TEST_POINT_NAME(TP_TCP_SYSTEM_KEEP_ALIVE_SET)
 
     // Destroy
     TEST_POINT_NAME(TP_Destroy_NULL_TLSIO_FAIL)

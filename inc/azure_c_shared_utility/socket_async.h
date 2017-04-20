@@ -20,7 +20,7 @@ extern "C" {
 // socket_async exposes asynchronous socket operations while hiding OS-specifics. Committing to
 // asynchronous operation also simplifies the interface compared to generic sockets.
 
-#define SOCKET_ASYNC_NULL_SOCKET -1
+#define SOCKET_ASYNC_INVALID_SOCKET  -1
 
     typedef struct
     {

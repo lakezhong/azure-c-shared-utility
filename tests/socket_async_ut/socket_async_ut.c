@@ -40,6 +40,8 @@ void my_gballoc_free(void* ptr)
 
 #endif
 
+#include "azure_c_shared_utility/socket_async.h"
+
  // WIN32 sockets are incompatible with other OS socket function signatures
 #ifdef WIN32
  // Just use this header for convenience while writing the code in Windows. Later it will
@@ -72,35 +74,44 @@ void my_gballoc_free(void* ptr)
  */
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
+MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
+MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, size_t, addrlen);
+MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, size_t, optlen);
+MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, size_t, addrlen);
+MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout);
+MOCKABLE_FUNCTION(, int, send, int, sockfd, const void*, buf, size_t, len, int, flags);
+MOCKABLE_FUNCTION(, int, recv, int, sockfd, void*, buf, size_t, len, int, flags);
+MOCKABLE_FUNCTION(, int, FD_ISSET, int, sockfd, void*, dummy);
+MOCKABLE_FUNCTION(, int, close, int, sockfd);
 #undef ENABLE_MOCKS
 
-#include "test_points.h"
-
 static int test_socket = (int)0x4243;
+static int test_point;
 int fcntl(int fd, int cmd, int arg) { fd; cmd; arg; return 0; }
 
+#include "test_points.h"
+#include "keep_alive.h"
 
+// getsockopt is only used to retrieve extended errors, so this is simpler than
+// it might be.
+int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen)
+{
+    sockfd;
+    level;
+    optname;
+    optlen;
+    int result = EAGAIN;
+    switch (test_point)
+    {
+    case TP_UDP_SOCKET_FAIL: result = EACCES; break;
+    case TP_UDP_CONNECT_IN_PROGRESS: result = EINPROGRESS; break;
+    }
+    // This ugly cast is safe for this UT and this socket_async.c file because of the 
+    // limited usage of getsockopt
+    *((int*)optval) = result;
+    return 0;
+}
 
-MOCK_FUNCTION_WITH_CODE(, int, socket, int, af, int, type, int, protocol)
-MOCK_FUNCTION_END(test_socket)
-MOCK_FUNCTION_WITH_CODE(, int, bind, int, sockfd, const struct sockaddr*, addr, size_t, addrlen)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, getsockopt, int, sockfd, int, level, int, optname, void*, optval, size_t*, optlen)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, size_t, optlen)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, connect, int, sockfd, const struct sockaddr*, addr, size_t, addrlen)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, send, int, sockfd, const void*, buf, size_t, len, int, flags)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, recv, int, sockfd, void*, buf, size_t, len, int, flags)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, FD_ISSET, int, sockfd, void*, dummy)
-MOCK_FUNCTION_END(0)
-MOCK_FUNCTION_WITH_CODE(, int, close, int, sockfd)
-MOCK_FUNCTION_END(0)
 
 
  /**
@@ -115,32 +126,6 @@ static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
     (void)snprintf(temp_str, sizeof(temp_str), "umock_c reported error :%s", ENUM_TO_STRING(UMOCK_C_ERROR_CODE, error_code));
     ASSERT_FAIL(temp_str);
 }
-
-#if false
-/**
- * Create the mock function that will replace your callee functions. 
- * For this example, we will replace the functions open and close of the callee. So we 
- *    need to create the mock functions my_callee_open(), and my_callee_close().
- */
-bool my_callee_open_must_succeed;   //This bool will manually determine the happy and unhappy paths.
-CALLEE_HANDLE my_callee_open(size_t a)
-{
-    void* result;
-    
-    if(my_callee_open_must_succeed)
-    {
-        // Do something like when callee_open succeed...
-        result = malloc(a);
-    }
-    else
-    {
-        // Do something like when callee_open failed...
-        result = NULL;
-    }
-    
-    return result;
-}
-#endif
 
 /**
  * This is necessary for the test suite, just keep as is.
@@ -175,49 +160,14 @@ BEGIN_TEST_SUITE(socket_async_ut)
         result = umocktypes_charptr_register_types();
 		ASSERT_ARE_EQUAL(int, 0, result);
 
-        /**
-         * It is necessary to identify the types defined on your target. With it, the test system will 
-         *    know how to use it. 
-         *
-         * On the target.h example, there is the type TARGET_HANDLE that is a void*
-         */
-        //REGISTER_UMOCK_ALIAS_TYPE(CALLEE_HANDLE, void*);
 
-        /**
-         * It is necessary to replace all mockable functions by the mock functions that you created here.
-         * It will tell the test suite to call my_callee_open besides to call the real callee_open.
-         */
-		//REGISTER_GLOBAL_MOCK_HOOK(callee_open, my_callee_open);
+        REGISTER_GLOBAL_MOCK_RETURNS(socket, test_socket, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(bind, 0, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(connect, 0, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(setsockopt, 0, -1);
 
-        /**
-         * If you don't care about what there is inside of the function in anyway, and you just need 
-         *   to control the function return you can use the REGISTER_GLOBAL_MOCK_RETURN and 
-         *   REGISTER_GLOBAL_MOCK_FAIL_RETURN.
-         *
-         * In the follow example, callee_bar_1 will always return CALLEE_RESULT_OK, so, we don't need to
-         *   create the unhappy return; and callee_bar_2 can return CALLEE_RESULT_OK or CALLEE_RESULT_FAIL.
-         */
-        //REGISTER_GLOBAL_MOCK_RETURN(callee_bar_1, CALLEE_RESULT_OK);
-        //REGISTER_GLOBAL_MOCK_RETURN(callee_bar_2, CALLEE_RESULT_OK);
-        //REGISTER_GLOBAL_MOCK_FAIL_RETURN(callee_bar_2, CALLEE_RESULT_FAIL);
+        REGISTER_GLOBAL_MOCK_HOOK(setsockopt, my_setsockopt);
 
-        /**
-         * Or you can combine, for example, in the success case malloc will call my_gballoc_malloc, and for
-         *    the failed cases, it will return NULL.
-         */
-        //REGISTER_GLOBAL_MOCK_FAIL_RETURN(callee_open, NULL);    // Fail return for the callee_open.
-        //REGISTER_GLOBAL_MOCK_HOOK(gballoc_malloc, my_gballoc_malloc);
-        //REGISTER_GLOBAL_MOCK_FAIL_RETURN(gballoc_malloc, NULL);
-        //REGISTER_GLOBAL_MOCK_HOOK(gballoc_realloc, my_gballoc_realloc);
-        //REGISTER_GLOBAL_MOCK_FAIL_RETURN(gballoc_realloc, NULL);
-        //REGISTER_GLOBAL_MOCK_HOOK(gballoc_free, my_gballoc_free);
-
-        /**
-         * You can initialize other global variables here, for instance image that you have a standard void* that will be converted
-         *   any pointer that your test needs.
-         */
-        //g_GenericPointer = malloc(1);
-        //ASSERT_IS_NOT_NULL(g_GenericPointer);
     }
 
     /**
@@ -259,43 +209,189 @@ BEGIN_TEST_SUITE(socket_async_ut)
         TEST_MUTEX_RELEASE(g_testByTest);
     }
 
-    // TODO: Add your unit test functions as in the example below:
-#if false
-    /* Tests_SRS_TEMPLATE_21_001: [ The target_create shall call callee_open to do stuff and allocate the memory. ]*/
-    TEST_FUNCTION(target_create_call_callee_open__succeed)
+    // This main_sequence test performs all of the test passes that require sequencing of tlsio calls
+    // To do this, it expands on the mocking framework's negative tests concept by adding
+    // "test point", which are defined in the test_points.h file. These test points capture the 
+    // process of testing the tlsio, and reading the test_points.h file first will make the following
+    // function make a lot more sense.
+    TEST_FUNCTION(socket_async_main_sequence)
     {
-        ///arrange
-        TARGET_RESULT result;
-        
-        /**
-         * The STRICT_EXPECTED_CALL creates a list of functions that we expect that the target calls. 
-         * The function umock_c_get_expected_calls() returns this list as a serialized string.
-         * You can determine all parameters, with the expected value, or define that the argument must
-         *    be ignored by the test suite.
-         * During the execution, the suit will collect the same information, creating a second list of
-         *   called functions.
-         * The function umock_c_get_actual_calls() return this list as a serialized string.
-         */
-        STRICT_EXPECTED_CALL(callee_open(SIZEOF_FOO_MEMORY));
-        STRICT_EXPECTED_CALL(gballoc_malloc(SIZEOF_FOO_MEMORY));    //This is the malloc in the mock my_callee_open().
-        STRICT_EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG)).IgnoreArgument(1);    //This is the malloc in the target_create().
-        STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG)).IgnoreArgument(1);      //This is the free in the target_create().
 
-        ///act
-        result = target_create(SIZEOF_FOO_MEMORY);
+        for (test_point = 0; test_point <= TP_FINAL_OK; test_point++)
+        {
+            // Show the test point description in the output for the sake of 
+            // human readability
+            test_point_label_output(test_point);
 
-        ///assert
-        ASSERT_ARE_EQUAL(int, TARGET_RESULT_OK, result);
-        /**
-         * The follow assert will compare the expected calls with the actual calls. If it is different, 
-         *    it will show the serialized strings with the differences in the log.
-         */
-        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+            init_keep_alive_values();
+            bool is_UDP = test_point <= TP_UDP_CONNECT_SUCCESS;
 
-        ///cleanup
-        target_destroy();
+            /////////////////////////////////////////////////////////////////////////////
+            ///arrange
+            /////////////////////////////////////////////////////////////////////////////
+            umock_c_reset_all_calls();
+
+            InitTestPoints();
+
+            int negativeTestsInitResult = umock_c_negative_tests_init();
+            ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+
+            if (test_point <= TP_UDP_CONNECT_SUCCESS)
+            {
+                // The UDP Create test points
+                //      TP_NULL_SOCK_HANDLE_FAIL
+                //      TP_UDP_SOCKET_FAIL
+                //      
+                // These just test socket creation. There is no difference between UDP
+                // and TCP socket use or destruction, so that is all handled by the TCP
+                // test points
+                
+                // No calls are made for TP_NULL_SOCK_HANDLE_FAIL
+                TEST_POINT(TP_UDP_SOCKET_FAIL, socket(AF_INET, SOCK_DGRAM, 0));
+                TEST_POINT(TP_UDP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+                TEST_POINT(TP_UDP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+            }
+            else
+            {
+                // The rest of the test points are TCP
+                TEST_POINT(TP_TCP_SOCKET_FAIL, socket(AF_INET, SOCK_STREAM, 0));
+                TEST_POINT(TP_TCP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+                TEST_POINT(TP_TCP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+                switch (test_point)
+                {
+                case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
+                    TEST_POINT(TP_TCP_SOCKET_OPT_DEFAULT_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+                    break;
+                }
+
+            }
+
+
+
+            umock_c_negative_tests_snapshot();
+
+            umock_c_negative_tests_reset();
+
+            // Each test pass has no more than one place where umock_c_negative_tests_fail_call 
+            // will force a failure.   
+            uint16_t fail_index = test_points[test_point];
+            if (fail_index != 0xffff)
+            {
+                umock_c_negative_tests_fail_call(fail_index);
+            }
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            ///act
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            SOCKET_ASYNC_HANDLE sock = 0;
+            SOCKET_ASYNC_HANDLE* handle = test_point == TP_NULL_SOCK_HANDLE_FAIL ? NULL : &sock;
+            int create_result = socket_async_create(handle, 0, 0, is_UDP, NULL);
+            create_result;
+
+            // Does create_result match expectations?
+            switch (test_point)
+            {
+            case TP_NULL_SOCK_HANDLE_FAIL:
+            case TP_UDP_SOCKET_FAIL:
+            case TP_UDP_BIND_FAIL:
+            case TP_UDP_CONNECT_FAIL:
+            case TP_TCP_SOCKET_FAIL:
+            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
+            case TP_TCP_BIND_FAIL:
+            case TP_TCP_CONNECT_FAIL:
+                if (create_result == 0)
+                {
+                    /* Tests_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
+                    ASSERT_FAIL("Unexpected create_result success");
+                }
+                break;
+            default:
+                if (create_result != 0)
+                {
+                    ASSERT_FAIL("Unexpected create_result failure");
+                }
+                break;
+            }
+
+            // Does the returned socket handle match expectations?
+            switch (test_point)
+            {
+            case TP_NULL_SOCK_HANDLE_FAIL:
+                if (sock != 0)
+                {
+                    ASSERT_FAIL("Unexpected returned sock value");
+                }
+                break;
+            case TP_UDP_SOCKET_FAIL:
+            case TP_UDP_BIND_FAIL:
+            case TP_UDP_CONNECT_FAIL:
+            case TP_TCP_SOCKET_FAIL:
+            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
+            case TP_TCP_BIND_FAIL:
+            case TP_TCP_CONNECT_FAIL:
+                if (sock != SOCKET_ASYNC_INVALID_SOCKET)
+                {
+                    ASSERT_FAIL("Unexpected returned sock value");
+                }
+                break;
+            default:
+                if (sock != test_socket)
+                {
+                    ASSERT_FAIL("Unexpected returned sock value");
+                }
+                break;
+            }
+
+            // Do the keep-alive values match expectations?
+            switch (test_point)
+            {
+            case TP_NULL_SOCK_HANDLE_FAIL:
+            case TP_UDP_SOCKET_FAIL:
+            case TP_UDP_BIND_FAIL:
+            case TP_UDP_CONNECT_FAIL:
+            case TP_UDP_CONNECT_IN_PROGRESS:
+            case TP_UDP_CONNECT_SUCCESS:
+            case TP_TCP_SOCKET_FAIL:
+            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
+                ASSERT_KEEP_ALIVE_UNTOUCHED();
+                break;
+            case TP_TCP_SYSTEM_KEEP_ALIVE_SET:
+                ASSERT_KEEP_ALIVE_SET();
+                break;
+            default:
+                ASSERT_KEEP_ALIVE_FALSE();
+                break;
+            }
+
+
+
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            ///assert
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // The assert section is sparse because most of the assertions have been done in the "act" stage.
+
+            /**
+            * The follow assert will compare the expected calls with the actual calls. If it is different,
+            *    it will show the serialized strings with the differences in the log.
+            */
+            if (true /*test_point != TP_SSL_connect_TIMEOUT_FAIL && test_point != TP_SSL_write_TIMEOUT_FAIL*/)
+            {
+                ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+            }
+
+            ///cleanup
+            umock_c_negative_tests_deinit();
+
+        }
     }
-#endif
 
 
 END_TEST_SUITE(socket_async_ut)

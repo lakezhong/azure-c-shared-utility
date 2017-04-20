@@ -25,6 +25,7 @@ extern "C" {
 #define F_GETFL 3
 #define F_SETFL 4
 #define O_NONBLOCK  1 /* nonblocking I/O */
+#define	EACCES		13		/* Permission denied */
 
 #ifndef FD_SET
 #undef  FD_SETSIZE

@@ -56,19 +56,22 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
 {
     int result;
     int sock;
-    *sock_out = SOCKET_ASYNC_NULL_SOCKET;
     struct sockaddr_in sock_addr;
 
     if (sock_out == NULL)
     {
+        /* Codes_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
         LogError("sock_out is NULL");
         result = __FAILURE__;
     }
     else
     {
+        *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
+        /* Codes_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
         sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
         if (sock < 0)
         {
+            // An essentially impossible failure, not worth logging errno()
             LogError("create socket failed");
             result = __FAILURE__;
         }
@@ -76,18 +79,21 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
         {
             int setopt_ret = 0;
             // None of the currently defined options apply to UDP
+            /* Codes_SRS_SOCKET_ASYNC_30_015: [ If is_UDP is true, the optional options parameter shall be ignored. ]*/
             if (!is_UDP)
             {
+                /* Codes_SRS_SOCKET_ASYNC_30_016: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
                 bool disable_keepalive;  // disable by default
                 if (options != NULL)
                 {
+                    /* Codes_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
                     if (options->keep_alive > 0)
                     {
                         int keepAlive = 1; //enable keepalive
-                        setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&(options->keep_idle), sizeof((options->keep_idle)));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&(options->keep_interval), sizeof((options->keep_interval)));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&(options->keep_count), sizeof((options->keep_count)));
+                        setopt_ret = setopt_ret | setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                        setopt_ret = setopt_ret | setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&(options->keep_idle), sizeof((options->keep_idle)));
+                        setopt_ret = setopt_ret | setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&(options->keep_interval), sizeof((options->keep_interval)));
+                        setopt_ret = setopt_ret | setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&(options->keep_count), sizeof((options->keep_count)));
                         disable_keepalive = false;
                     }
                     else if (options->keep_alive == 0)
@@ -108,7 +114,7 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
                 if (disable_keepalive)
                 {
                     int keepAlive = 0; //disable keepalive
-                    setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                    setopt_ret = setopt_ret | setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
                 }
             }
 
@@ -137,9 +143,9 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
 
                 int bind_ret = bind(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
 
-                if (bind_ret)
+                if (bind_ret != 0)
                 {
-                    LogError("bind socket failed");
+                    LogError("bind socket failed: %d", get_socket_errno(sock));
                     result = __FAILURE__;
                 }
                 else
@@ -147,7 +153,9 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint
 
                     memset(&sock_addr, 0, sizeof(sock_addr));
                     sock_addr.sin_family = AF_INET;
+                    /* Codes_SRS_SOCKET_ASYNC_30_011: [ The host_ipv4 parameter shall be the 32-bit IP V4 of the target server. ]*/
                     sock_addr.sin_addr.s_addr = serverIPv4;
+                    /* Codes_SRS_SOCKET_ASYNC_30_012: [ The port parameter shall be the port number for the target server. ]*/
                     sock_addr.sin_port = htons(port);
 
                     int connect_ret = connect(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
