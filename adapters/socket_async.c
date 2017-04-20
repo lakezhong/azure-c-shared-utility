@@ -215,7 +215,7 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         int select_ret = select(sock + 1, NULL, &writeset, &errset, &tv);
         if (select_ret < 0)
         {
-            /* Codes_SRS_SOCKET_ASYNC_30_027: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+            /* Codes_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
             LogError("Socket select failed: %d", get_socket_errno(sock));
             result = __FAILURE__;
         }
@@ -223,20 +223,20 @@ int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete)
         {
             if (FD_ISSET(sock, &errset))
             {
-                /* Codes_SRS_SOCKET_ASYNC_30_027: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+                /* Codes_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
                 LogError("Socket select errset non-empty: %d", get_socket_errno(sock));
                 result = __FAILURE__;
             }
             else if (FD_ISSET(sock, &writeset))
             {
-                /* Codes_SRS_SOCKET_ASYNC_30_026: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                 // Ready to read
                 result = 0;
                 *is_complete = true;
             }
             else
             {
-                /* Codes_SRS_SOCKET_ASYNC_30_026: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                 // Not ready yet
                 result = 0;
                 *is_complete = false;

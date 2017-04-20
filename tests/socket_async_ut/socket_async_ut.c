@@ -505,9 +505,9 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 // Does create_complete_result match expectations?
                 switch (test_point)
                 {
-                case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
-                case TP_TCP_IS_COMPLETE_SELECT_FAIL:
-                case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
+                case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
+                case TP_TCP_IS_COMPLETE_SELECT_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+                case TP_TCP_IS_COMPLETE_ERRSET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
                     if (create_complete_result == 0)
                     {
                         ASSERT_FAIL("Unexpected returned create_complete_result value");
@@ -524,13 +524,13 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 // Does is_compete match expectations?
                 switch (test_point)
                 {
-                case TP_TCP_IS_COMPLETE_NOT_READY_OK:
+                case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                     if (is_complete)
                     {
                         ASSERT_FAIL("Unexpected returned is_complete value");
                     }
                     break;
-                case TP_TCP_IS_COMPLETE_READY_OK:
+                case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                     if (!is_complete)
                     {
                         ASSERT_FAIL("Unexpected returned is_complete value");
