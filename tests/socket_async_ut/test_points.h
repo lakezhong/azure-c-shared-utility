@@ -43,6 +43,8 @@ enum
     TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
 
     // Destroy is a pass-thru, and not really testable
+    TP_DESTROY_OK,
+
     // NOTE!!!! Update test_point_names below when adding to this enum
     TP_FINAL_OK     // Always keep as last entry
 };
@@ -90,6 +92,8 @@ static X test_point_names[] =
 
 
     // Destroy is a pass-thru, and not really testable
+    TEST_POINT_NAME(TP_DESTROY_OK)
+
     TEST_POINT_NAME(TP_FINAL_OK)
 };
 

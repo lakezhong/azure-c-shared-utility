@@ -309,6 +309,13 @@ BEGIN_TEST_SUITE(socket_async_ut)
             }
 
             // The socket_async_is_create_complete test points
+            //
+            // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
+            // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
+            // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+            // TP_TCP_IS_COMPLETE_READY_OK,        // 
+            // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+            //
             switch (test_point)
             {
             case TP_TCP_IS_COMPLETE_SELECT_FAIL:
@@ -330,6 +337,14 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 break;
             }
 
+
+
+            // Destroy never fails
+            if (test_point == TP_DESTROY_OK)
+            {
+                /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
+                NO_FAIL_TEST_POINT(TP_DESTROY_OK, close(test_socket));
+            }
 
 
             umock_c_negative_tests_snapshot();
@@ -494,6 +509,15 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
 
 
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // The socket_async_is_create_complete test points
+            //
+            // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
+            // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
+            // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+            // TP_TCP_IS_COMPLETE_READY_OK,        // 
+            // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+            //
             if (test_point >= TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL)
             {
                 // Set is_complete to the opposite of what's expected so we can spot a change
@@ -538,8 +562,22 @@ BEGIN_TEST_SUITE(socket_async_ut)
                     break;
                 }
             }
+            // end socket_async_is_create_complete
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+
+
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            // socket_async_destroy (never fails)
+            if (test_point == TP_DESTROY_OK)
+            {
+                /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
+                socket_async_destroy(test_socket);
+            }
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////
