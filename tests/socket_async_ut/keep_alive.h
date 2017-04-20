@@ -76,6 +76,7 @@ static void ASSERT_KEEP_ALIVE_FALSE()
     }
 }
 
+/* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
 static void ASSERT_KEEP_ALIVE_SET()
 {
     if (keep_alive != test_keep_alive ||

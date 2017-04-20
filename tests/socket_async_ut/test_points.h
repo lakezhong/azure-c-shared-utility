@@ -24,14 +24,18 @@ enum
 
     // Create TCP
     TP_TCP_SOCKET_FAIL,			// socket create fail
+    TP_TCP_SOCKET_OPT_0_FAIL,   // setsockopt set keep-alive fail 0
+    TP_TCP_SOCKET_OPT_1_FAIL,   // setsockopt set keep-alive fail 1
+    TP_TCP_SOCKET_OPT_2_FAIL,   // setsockopt set keep-alive fail 2
+    TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
     TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
+    TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
 
 
     TP_TCP_BIND_FAIL,			// socket bind fail
     TP_TCP_CONNECT_FAIL,		// socket connect fail
     TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
     TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
-    TP_TCP_SYSTEM_KEEP_ALIVE_SET,   // socket create fail
 
     // Destroy
     TP_Destroy_NULL_TLSIO_FAIL,     // Call destroy null tlsio
@@ -62,13 +66,17 @@ static X test_point_names[] =
 
     // Create TCP
     TEST_POINT_NAME(TP_TCP_SOCKET_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_0_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_1_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_2_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_3_FAIL)
     TEST_POINT_NAME(TP_TCP_SOCKET_OPT_DEFAULT_FAIL)
+    TEST_POINT_NAME(TP_TCP_SOCKET_OPT_SET_OK)
 
     TEST_POINT_NAME(TP_TCP_BIND_FAIL)
     TEST_POINT_NAME(TP_TCP_CONNECT_FAIL)
     TEST_POINT_NAME(TP_TCP_CONNECT_IN_PROGRESS)
     TEST_POINT_NAME(TP_TCP_CONNECT_SUCCESS)
-    TEST_POINT_NAME(TP_TCP_SYSTEM_KEEP_ALIVE_SET)
 
     // Destroy
     TEST_POINT_NAME(TP_Destroy_NULL_TLSIO_FAIL)

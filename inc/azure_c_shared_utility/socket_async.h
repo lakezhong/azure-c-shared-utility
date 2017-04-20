@@ -28,7 +28,7 @@ extern "C" {
         // is strongly recommended to use one of the higher level keepalive (ping) options rather
         // than the TCP level because the higher level options provide server connection status
         // in addition to keeping the connection open.
-        int keep_alive;     // < 0 for system defaults, 0 to disable, > 0 to use supplied idle, interval, and count 
+        int keep_alive;     // < 0 for system defaults, >= 0 to use supplied keep_alive, idle, interval, and count 
         int keep_idle;      // seconds before first keepalive packet (ignored if keep_alive <= 0)
         int keep_interval;  // seconds between keepalive packets (ignored if keep_alive <= 0)
         int keep_count;     // number of times to try before declaring failure (ignored if keep_alive <= 0)

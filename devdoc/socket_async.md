@@ -20,10 +20,10 @@ It is anticipated that socket_async.c will work for all non-Windows environments
 
     typedef struct
     {
-        bool keep_alive;    // true to enable keepalive, false by default
-        int keep_idle;      // seconds before first keepalive packet
-        int keep_interval;  // seconds between keepalive packets
-        int keep_count;     // number of times to try before declaring failure
+      int keep_alive;     // < 0 for system defaults, 0 to disable, >= 0 to use supplied keep_alive, idle, interval, and count
+      int keep_idle;      // seconds before first keepalive packet (ignored if keep_alive <= 0)
+      int keep_interval;  // seconds between keepalive packets (ignored if keep_alive <= 0)
+      int keep_count;     // number of times to try before declaring failure (ignored if keep_alive <= 0)
     } SOCKET_ASYNC_OPTIONS;
     typedef SOCKET_ASYNC_OPTIONS* SOCKET_ASYNC_OPTIONS_HANDLE;
 
@@ -56,21 +56,23 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, uint16_t 
 
 **SRS_SOCKET_ASYNC_30_013: [** The `is_UDP` parameter shall be `true` for a UDP connection, and `false` for TCP. **]**
 
-**SRS_SOCKET_ASYNC_30_014: [** If the optional `options` parameter is non-NULL and `is_UDP` is false, `socket_async_create` shall set the socket options to the provided values. **]**
+**SRS_SOCKET_ASYNC_30_014: [** If the optional `options` parameter is non-NULL and `is_UDP` is false, and options->keep_alive is non-negative, `socket_async_create` shall set the socket options to the provided options values. **]**
 
-**SRS_SOCKET_ASYNC_30_015: [** If `is_UDP` is true, the optional `options` parameter shall be ignored. **]**
+**SRS_SOCKET_ASYNC_30_015: [** If the optional `options` parameter is non-NULL and `is_UDP` is false, and options->keep_alive is negative, `socket_async_create` not set the socket keep-alive options. **]**
 
-**SRS_SOCKET_ASYNC_30_016: [** If the optional `options` parameter is NULL and `is_UDP` is false, `socket_async_create` shall disable TCP keep-alive. **]**
+**SRS_SOCKET_ASYNC_30_016: [** If `is_UDP` is true, the optional `options` parameter shall be ignored. **]**
 
-**SRS_SOCKET_ASYNC_30_017: [** On success, the `sock` value shall be set to the created and configured SOCKET_ASYNC_HANDLE and `socket_async_create` shall return 0. **]**
+**SRS_SOCKET_ASYNC_30_017: [** If the optional `options` parameter is NULL and `is_UDP` is false, `socket_async_create` shall disable TCP keep-alive. **]**
 
-**SRS_SOCKET_ASYNC_30_018: [** The socket returned in `sock` shall be non-blocking. **]**
+**SRS_SOCKET_ASYNC_30_018: [** On success, the `sock` value shall be set to the created and configured SOCKET_ASYNC_HANDLE and `socket_async_create` shall return 0. **]**
 
-**SRS_SOCKET_ASYNC_30_019: [** If socket option setting fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_019: [** The socket returned in `sock` shall be non-blocking. **]**
 
-**SRS_SOCKET_ASYNC_30_020: [** If socket binding fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_020: [** If socket option setting fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
 
-**SRS_SOCKET_ASYNC_30_021: [** If socket connection fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_021: [** If socket binding fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+
+**SRS_SOCKET_ASYNC_30_022: [** If socket connection fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
 
 
 ###   socket_async_is_create_complete
@@ -84,15 +86,15 @@ Validation of the `sock` parameter is deferred to the underlying socket call.
 int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete);
 ```
 
-**SRS_SOCKET_ASYNC_30_022: [** The `sock` parameter shall be the socket to check for initial handshake completion. **]**
+**SRS_SOCKET_ASYNC_30_023: [** The `sock` parameter shall be the socket to check for initial handshake completion. **]**
 
-**SRS_SOCKET_ASYNC_30_023: [** The `is_complete` parameter shall receive the completion state. **]**
+**SRS_SOCKET_ASYNC_30_024: [** The `is_complete` parameter shall receive the completion state. **]**
 
-**SRS_SOCKET_ASYNC_30_023: [** If the `is_complete` parameter is NULL, `socket_async_is_create_complete` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_025: [** If the `is_complete` parameter is NULL, `socket_async_is_create_complete` shall log an error and return _FAILURE_. **]**
 
-**SRS_SOCKET_ASYNC_30_024: [** On success, the `is_complete` value shall be set to the completion state and `socket_async_create` shall return 0. **]**
+**SRS_SOCKET_ASYNC_30_026: [** On success, the `is_complete` value shall be set to the completion state and `socket_async_create` shall return 0. **]**
 
-**SRS_SOCKET_ASYNC_30_025: [** On failure, the `is_complete` value shall be set to `false` and `socket_async_create` shall return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_027: [** On failure, the `is_complete` value shall be set to `false` and `socket_async_create` shall return _FAILURE_. **]**
 
 
 ###   socket_async_send
