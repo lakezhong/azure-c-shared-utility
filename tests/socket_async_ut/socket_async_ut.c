@@ -89,7 +89,7 @@ static int test_socket = (int)0x4243;
 static int test_point;
 int fcntl(int fd, int cmd, int arg) { fd; cmd; arg; return 0; }
 #define BAD_BUFFER_COUNT 10000
-const char test_msg[] = "Send this";
+char test_msg[] = "Send this";
 
 #include "test_points.h"
 #include "keep_alive.h"
@@ -109,6 +109,8 @@ int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen)
     case TP_UDP_CONNECT_IN_PROGRESS: result = EINPROGRESS; break;
     case TP_SEND_FAIL: result = EACCES; break;
     case TP_SEND_WAITING_OK: result = EAGAIN; break;
+    case TP_RECEIVE_FAIL: result = EACCES; break;
+    case TP_RECEIVE_WAITING_OK: result = EAGAIN; break;
     }
     // This ugly cast is safe for this UT and this socket_async.c file because of the 
     // limited usage of getsockopt
@@ -169,6 +171,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
         REGISTER_GLOBAL_MOCK_RETURNS(setsockopt, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(select, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(send, sizeof(test_msg), -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(recv, sizeof(test_msg), -1);
         // FD_ISSET is just a bool-ish function. It's convenient to use 0 as the 
         // success case and 1 as fail because sometimes it's checking an error set
         // and "success" == empty == 0
@@ -340,6 +343,15 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 break;
             }
 
+
+            // Send test points
+            //
+            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
+            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
+            // TP_SEND_FAIL,                       // send failed
+            // TP_SEND_WAITING_OK,                 // send not ready
+            // TP_SEND_OK,     
+            // 
             switch (test_point)
             {
             case TP_SEND_FAIL:
@@ -353,6 +365,26 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 break;
             }
 
+            // Receive test points
+            //
+            // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
+            // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
+            // TP_RECEIVE_FAIL,                       // receive failed
+            // TP_RECEIVE_WAITING_OK,                 // receive not ready
+            // TP_RECEIVE_OK,     
+            // 
+            switch (test_point)
+            {
+            case TP_RECEIVE_FAIL:
+                TEST_POINT(TP_RECEIVE_FAIL, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_RECEIVE_WAITING_OK:
+                TEST_POINT(TP_RECEIVE_WAITING_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_RECEIVE_OK:
+                NO_FAIL_TEST_POINT(TP_RECEIVE_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            }
 
             // Destroy never fails
             if (test_point == TP_DESTROY_OK)
@@ -581,12 +613,21 @@ BEGIN_TEST_SUITE(socket_async_ut)
             /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Send test points
+            //
+            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
+            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
+            // TP_SEND_FAIL,                       // send failed
+            // TP_SEND_WAITING_OK,                 // send not ready
+            // TP_SEND_OK,     
+            // 
             if (test_point >= TP_SEND_NULL_BUFFER_FAIL && test_point <= TP_SEND_OK)
             {
                 const char *buffer = test_point == TP_SEND_NULL_BUFFER_FAIL ? NULL : test_msg;
                 size_t sent_count = BAD_BUFFER_COUNT;
                 size_t *sent_count_param = test_point == TP_SEND_NULL_SENT_COUNT_FAIL ? NULL : &sent_count;
-                int send_result = socket_async_send(test_socket, (void*)buffer, sizeof(test_msg), sent_count_param);
+                int send_result = socket_async_send(test_socket, buffer, sizeof(test_msg), sent_count_param);
 
                 // Does send_result match expectations>?
                 switch (test_point)
@@ -599,7 +640,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                         ASSERT_FAIL("Unexpected returned send_result value");
                     }
                     break;
-                case TP_SEND_WAITING_OK:    /* Codes_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+                case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
                 case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
                     if (send_result != 0)
                     {
@@ -611,7 +652,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 // Does sent_count match expectations>?
                 switch (test_point)
                 {
-                    /* Codes_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+                /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
                 case TP_SEND_WAITING_OK:
                     if (sent_count != 0)
                     {
@@ -635,8 +676,75 @@ BEGIN_TEST_SUITE(socket_async_ut)
                     break;
                 }
             }
+            // end send
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
 
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Receive test points
+            //
+            // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
+            // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
+            // TP_RECEIVE_FAIL,                       // receive failed
+            // TP_RECEIVE_WAITING_OK,                 // receive not ready
+            // TP_RECEIVE_OK,     
+            // 
+            if (test_point >= TP_RECEIVE_NULL_BUFFER_FAIL && test_point <= TP_RECEIVE_OK)
+            {
+                char *buffer = test_point == TP_RECEIVE_NULL_BUFFER_FAIL ? NULL : test_msg;
+                size_t received_count = BAD_BUFFER_COUNT;
+                size_t *received_count_param = test_point == TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL ? NULL : &received_count;
+                int receive_result = socket_async_receive(test_socket, buffer, sizeof(test_msg), received_count_param);
 
+                // Does receive_result match expectations>?
+                switch (test_point)
+                {
+                case TP_RECEIVE_NULL_BUFFER_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+                case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL: /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+                case TP_RECEIVE_FAIL:      /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
+                    if (receive_result == 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned send_result value");
+                    }
+                    break;
+                case TP_RECEIVE_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
+                case TP_RECEIVE_OK:            /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
+                    if (receive_result != 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned send_result value");
+                    }
+                    break;
+                }
+
+                // Does received_count match expectations>?
+                switch (test_point)
+                {
+                /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
+                case TP_RECEIVE_WAITING_OK:
+                    if (received_count != 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned received_count value");
+                    }
+                    break;
+
+                /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
+                case TP_RECEIVE_OK:
+                    if (received_count != sizeof(test_msg))
+                    {
+                        ASSERT_FAIL("Unexpected returned received_count value");
+                    }
+                    break;
+
+                default:
+                    if (received_count != BAD_BUFFER_COUNT)
+                    {
+                        ASSERT_FAIL("Unexpected returned received_count value");
+                    }
+                    break;
+                }
+            }
+            //
+            // end receive
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////

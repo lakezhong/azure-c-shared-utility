@@ -49,6 +49,13 @@ enum
     TP_SEND_WAITING_OK,                 // send not ready
     TP_SEND_OK,                         // send worked
 
+    // Receive
+    TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
+    TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null received count
+    TP_RECEIVE_FAIL,                       // receive failed
+    TP_RECEIVE_WAITING_OK,                 // receive not ready
+    TP_RECEIVE_OK,                         // receive worked
+
 
     // Destroy is a pass-thru, and not really testable
     TP_DESTROY_OK,
@@ -104,6 +111,13 @@ static X test_point_names[] =
     TEST_POINT_NAME(TP_SEND_FAIL)
     TEST_POINT_NAME(TP_SEND_WAITING_OK)
     TEST_POINT_NAME(TP_SEND_OK)
+
+    // Receive
+    TEST_POINT_NAME(TP_RECEIVE_NULL_BUFFER_FAIL)
+    TEST_POINT_NAME(TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL)
+    TEST_POINT_NAME(TP_RECEIVE_FAIL)
+    TEST_POINT_NAME(TP_RECEIVE_WAITING_OK)
+    TEST_POINT_NAME(TP_RECEIVE_OK)
 
     // Destroy is a pass-thru, and not really testable
     TEST_POINT_NAME(TP_DESTROY_OK)

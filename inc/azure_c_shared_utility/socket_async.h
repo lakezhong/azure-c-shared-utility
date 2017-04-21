@@ -88,7 +88,7 @@ extern "C" {
     * @return   @c 0 if successful.
     *           __FAILURE__ means an unexpected error has occurred and the socket must be destroyed.
     */
-    MOCKABLE_FUNCTION(, int, socket_async_send, SOCKET_ASYNC_HANDLE, sock, void*, buffer, size_t, size, size_t*, sent_count);
+    MOCKABLE_FUNCTION(, int, socket_async_send, SOCKET_ASYNC_HANDLE, sock, const void*, buffer, size_t, size, size_t*, sent_count);
 
     /**
     * @brief	Receive a message on the specified socket.
