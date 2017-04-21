@@ -88,6 +88,8 @@ MOCKABLE_FUNCTION(, int, close, int, sockfd);
 static int test_socket = (int)0x4243;
 static int test_point;
 int fcntl(int fd, int cmd, int arg) { fd; cmd; arg; return 0; }
+#define BAD_BUFFER_COUNT 10000
+const char test_msg[] = "Send this";
 
 #include "test_points.h"
 #include "keep_alive.h"
@@ -105,14 +107,14 @@ int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen)
     {
     case TP_UDP_SOCKET_FAIL: result = EACCES; break;
     case TP_UDP_CONNECT_IN_PROGRESS: result = EINPROGRESS; break;
+    case TP_SEND_FAIL: result = EACCES; break;
+    case TP_SEND_WAITING_OK: result = EAGAIN; break;
     }
     // This ugly cast is safe for this UT and this socket_async.c file because of the 
     // limited usage of getsockopt
     *((int*)optval) = result;
     return 0;
 }
-
-
 
  /**
   * Umock error will helps you to identify errors in the test suite or in the way that you are 
@@ -166,6 +168,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
         REGISTER_GLOBAL_MOCK_RETURNS(connect, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(setsockopt, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(select, 0, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(send, sizeof(test_msg), -1);
         // FD_ISSET is just a bool-ish function. It's convenient to use 0 as the 
         // success case and 1 as fail because sometimes it's checking an error set
         // and "success" == empty == 0
@@ -337,6 +340,18 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 break;
             }
 
+            switch (test_point)
+            {
+            case TP_SEND_FAIL:
+                TEST_POINT(TP_SEND_FAIL, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_SEND_WAITING_OK:
+                TEST_POINT(TP_SEND_WAITING_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_SEND_OK:
+                NO_FAIL_TEST_POINT(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            }
 
 
             // Destroy never fails
@@ -566,6 +581,61 @@ BEGIN_TEST_SUITE(socket_async_ut)
             /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+            if (test_point >= TP_SEND_NULL_BUFFER_FAIL && test_point <= TP_SEND_OK)
+            {
+                const char *buffer = test_point == TP_SEND_NULL_BUFFER_FAIL ? NULL : test_msg;
+                size_t sent_count = BAD_BUFFER_COUNT;
+                size_t *sent_count_param = test_point == TP_SEND_NULL_SENT_COUNT_FAIL ? NULL : &sent_count;
+                int send_result = socket_async_send(test_socket, (void*)buffer, sizeof(test_msg), sent_count_param);
+
+                // Does send_result match expectations>?
+                switch (test_point)
+                {
+                case TP_SEND_NULL_BUFFER_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+                case TP_SEND_NULL_SENT_COUNT_FAIL:  /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+                case TP_SEND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
+                    if (send_result == 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned send_result value");
+                    }
+                    break;
+                case TP_SEND_WAITING_OK:    /* Codes_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+                case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
+                    if (send_result != 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned send_result value");
+                    }
+                    break;
+                }
+
+                // Does sent_count match expectations>?
+                switch (test_point)
+                {
+                    /* Codes_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+                case TP_SEND_WAITING_OK:
+                    if (sent_count != 0)
+                    {
+                        ASSERT_FAIL("Unexpected returned sent_count value");
+                    }
+                    break;
+
+                /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
+                case TP_SEND_OK:
+                    if (sent_count != sizeof(test_msg))
+                    {
+                        ASSERT_FAIL("Unexpected returned sent_count value");
+                    }
+                    break;
+
+                default:
+                    if (sent_count != BAD_BUFFER_COUNT)
+                    {
+                        ASSERT_FAIL("Unexpected returned sent_count value");
+                    }
+                    break;
+                }
+            }
+
 
 
 
@@ -576,7 +646,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
                 socket_async_destroy(test_socket);
             }
-
+            // end socket_async_destroy
             /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

@@ -42,6 +42,14 @@ enum
     TP_TCP_IS_COMPLETE_READY_OK,        // 
     TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
 
+    // Send
+    TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
+    TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
+    TP_SEND_FAIL,                       // send failed
+    TP_SEND_WAITING_OK,                 // send not ready
+    TP_SEND_OK,                         // send worked
+
+
     // Destroy is a pass-thru, and not really testable
     TP_DESTROY_OK,
 
@@ -90,12 +98,19 @@ static X test_point_names[] =
     TEST_POINT_NAME(TP_TCP_IS_COMPLETE_READY_OK)
     TEST_POINT_NAME(TP_TCP_IS_COMPLETE_NOT_READY_OK)
 
+    // Send
+    TEST_POINT_NAME(TP_SEND_NULL_BUFFER_FAIL)
+    TEST_POINT_NAME(TP_SEND_NULL_SENT_COUNT_FAIL)
+    TEST_POINT_NAME(TP_SEND_FAIL)
+    TEST_POINT_NAME(TP_SEND_WAITING_OK)
+    TEST_POINT_NAME(TP_SEND_OK)
 
     // Destroy is a pass-thru, and not really testable
     TEST_POINT_NAME(TP_DESTROY_OK)
 
     TEST_POINT_NAME(TP_FINAL_OK)
 };
+
 
 static void test_point_label_output(int fp)
 {

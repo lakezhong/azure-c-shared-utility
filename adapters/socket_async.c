@@ -15,32 +15,15 @@
 #include <sys/socket.h>
 #endif // LINUX
 
-// WIN32 sockets are incompatible with other OS socket function signatures
+// WIN32 sockets are incompatible with other OS socket function signatures,
+// so there will be a socket_async_win32.c file to handle Windows.
 #ifdef WIN32
-// Just use this header for convenience while writing the code in Windows. Later it will
-// only run for Linux variants.
+// This header is just for convenience while writing the code in Windows.
 #include "fake_win32_socket.h"
 #endif
 
 #include "azure_c_shared_utility/socket_async.h"
 #include "azure_c_shared_utility/xlogging.h"
-
-#define AZURE_SSL_SOCKET_SO_KEEPALIVE 1    /* enable keepalive */
-#define AZURE_SSL_SOCKET_TCP_KEEPIDLE 30   /* seconds until first keep-alive */
-#define AZURE_SSL_SOCKET_TCP_KEEPINTVL 30   /* seconds between keep-alives */
-#define AZURE_SSL_SOCKET_TCP_KEEPCNT 3     /* number of keep-alive failures before declaring connection failure */
-
-
-// EXTRACT_IPV4 pulls the uint32_t IPv4 address out of an addrinfo struct
-#ifdef WIN32	
-#define EXTRACT_IPV4(ptr) ((struct sockaddr_in *) ptr->ai_addr)->sin_addr.S_un.S_addr
-#else
-// This default definition handles lwIP. Please add comments for other systems tested.
-#define EXTRACT_IPV4(ptr) ((struct sockaddr_in *) ptr->ai_addr)->sin_addr.s_addr
-#endif
-
-
-
 
 
 static int get_socket_errno(int fd)
@@ -251,6 +234,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_
     int result;
     if (buffer == NULL)
     {
+        /* Codes_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
         LogError("buffer is NULL");
         result = __FAILURE__;
     }
@@ -258,6 +242,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_
     {
         if (sent_count == NULL)
         {
+            /* Codes_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
             LogError("sent_count is NULL");
             result = __FAILURE__;
         }
@@ -266,15 +251,17 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_
             int send_result = send(sock, buffer, size, 0);
             if (send_result < 0)
             {
-                *sent_count = 0;
                 int sock_err = get_socket_errno(sock);
                 if (sock_err == EAGAIN || sock_err == EWOULDBLOCK)
                 {
+                    /* Codes_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
                     // Nothing sent, try again later
+                    *sent_count = 0;
                     result = 0;
                 }
                 else
                 {
+                    /* Codes_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
                     // Something bad happened
                     LogError("Unexpected send error: %d", sock_err);
                     result = __FAILURE__;
@@ -282,6 +269,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_
             }
             else
             {
+                /* Codes_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
                 // Sent at least part of the message
                 result = 0;
                 *sent_count = (size_t)send_result;
@@ -342,45 +330,4 @@ void socket_async_destroy(int sock)
     close(sock);
 }
 
-#if(0)
-uint32_t SSL_Get_IPv4(const char* hostname)
-{
-    struct addrinfo *addrInfo = NULL;
-    struct addrinfo *ptr = NULL;
-    struct addrinfo hints;
-
-    uint32_t result = 0;
-
-    //--------------------------------
-    // Setup the hints address info structure
-    // which is passed to the getaddrinfo() function
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-
-    //--------------------------------
-    // Call getaddrinfo(). If the call succeeds,
-    // the result variable will hold a linked list
-    // of addrinfo structures containing response
-    // information
-    int getAddrResult = getaddrinfo(hostname, NULL, &hints, &addrInfo);
-    if (getAddrResult == 0)
-    {
-        // If we find the AF_INET address, use it as the return value
-        for (ptr = addrInfo; ptr != NULL; ptr = ptr->ai_next)
-        {
-            switch (ptr->ai_family)
-            {
-            case AF_INET:
-                result = EXTRACT_IPV4(ptr);
-                break;
-            }
-        }
-        freeaddrinfo(addrInfo);
-    }
-
-    return result;
-}
-#endif
 
