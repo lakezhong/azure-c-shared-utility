@@ -20,6 +20,8 @@
 #ifdef WIN32
 // This header is just for convenience while writing the code in Windows.
 #include "fake_win32_socket.h"
+#else
+#include "azure_c_shared_utility/socket_async_os.h"
 #endif
 
 #include "azure_c_shared_utility/socket_async.h"
