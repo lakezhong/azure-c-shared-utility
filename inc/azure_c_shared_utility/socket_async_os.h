@@ -18,8 +18,7 @@
 #ifdef USE_LINUX_SOCKET_FOR_AZURE_IOT
 #include <sys/types.h> 
 #include <sys/socket.h>
-#endif
-
+#include <sys/select.h>
 #endif
 
 #endif /* AZURE_SOCKET_ASYNC_OS_H */

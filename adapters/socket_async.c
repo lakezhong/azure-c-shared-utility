@@ -4,21 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Enable platform-specific socket.h files using preprocessor defines in the makefile
-#ifdef USE_LWIP_SOCKET_FOR_AZURE_IOT
-#include "lwip/sockets.h"
-#include "lwip/netdb.h"
-#endif
-
-#ifdef LINUX
-#include <sys/types.h>          /* See NOTES */
-#include <sys/socket.h>
-#endif // LINUX
-
+#ifdef WIN32
 // WIN32 sockets are incompatible with other OS socket function signatures,
 // so there will be a socket_async_win32.c file to handle Windows.
-#ifdef WIN32
-// This header is just for convenience while writing the code in Windows.
+// This header is just for convenience while writing the unit test code in Windows.
 #include "fake_win32_socket.h"
 #else
 #include "azure_c_shared_utility/socket_async_os.h"
