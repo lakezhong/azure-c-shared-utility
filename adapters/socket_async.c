@@ -15,7 +15,7 @@
 static int get_socket_errno(int fd)
 {
     int sock_errno = 0;
-    uint32_t optlen = sizeof(sock_errno);
+    socklen_t optlen = sizeof(sock_errno);
     getsockopt(fd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
     return sock_errno;
 }
