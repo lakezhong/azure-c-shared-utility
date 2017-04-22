@@ -101,7 +101,7 @@ char test_msg[] = "Send this";
 
 // getsockopt is only used to retrieve extended errors, so this is simpler than
 // it might be.
-int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen)
+int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
 {
     sockfd;
     level;
