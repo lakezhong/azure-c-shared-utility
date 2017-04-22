@@ -14,7 +14,7 @@ static int keep_count;     // number of times to try before declaring failure (i
 #define test_keep_interval 33 
 #define test_keep_count 66
 
-static int my_setsockopt(int sockfd, int level, int optname, const void *optval, size_t optlen)
+static int my_setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
 {
     // All options are integers
     ASSERT_ARE_EQUAL(int, optlen, 4);
