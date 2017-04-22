@@ -132,12 +132,12 @@ int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, st
     // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
     // TP_TCP_IS_COMPLETE_READY_OK,        // 
     // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-    *writefds = 0;
-    *exceptfds = 0;
+    FD_CLR(nfds, writefds);
+    FD_CLR(nfds, exceptfds);
     switch (test_point)
     {
-    case TP_TCP_IS_COMPLETE_ERRSET_FAIL: *exceptfds = 1;
-    case TP_TCP_IS_COMPLETE_READY_OK: *writefds = 1;
+    case TP_TCP_IS_COMPLETE_ERRSET_FAIL: FD_SET(nfds, exceptfds); break;
+    case TP_TCP_IS_COMPLETE_READY_OK:    FD_SET(nfds, writefds); break;
     }
     return 0;
 }

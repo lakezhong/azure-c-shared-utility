@@ -28,10 +28,10 @@ extern "C" {
 #define	EACCES		13		/* Permission denied */
 
     /* Make FD_SETSIZE match NUM_SOCKETS in socket.c */
-#define FD_SET(n, p)
-#define FD_CLR(n, p)
+#define FD_SET(n, p) *(p) = 1
+#define FD_CLR(n, p) *(p) = 0
 #define FD_ISSET(n, p) (*(p) == 1)
-#define FD_ZERO(p)
+#define FD_ZERO(p) *(p) = 0
 
     typedef size_t socklen_t;
     typedef int ssize_t;
