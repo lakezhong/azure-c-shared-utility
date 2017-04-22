@@ -75,9 +75,9 @@ void my_gballoc_free(void* ptr)
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
 MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
-MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, size_t, addrlen);
-MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, size_t, optlen);
-MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, size_t, addrlen);
+MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
+MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, socklen_t, optlen);
+MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
 MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout);
 MOCKABLE_FUNCTION(, int, send, int, sockfd, const void*, buf, size_t, len, int, flags);
 MOCKABLE_FUNCTION(, int, recv, int, sockfd, void*, buf, size_t, len, int, flags);
@@ -164,6 +164,8 @@ BEGIN_TEST_SUITE(socket_async_ut)
         result = umocktypes_charptr_register_types();
 		ASSERT_ARE_EQUAL(int, 0, result);
 
+        REGISTER_UMOCK_ALIAS_TYPE(uint32_t, unsigned int);
+        REGISTER_UMOCK_ALIAS_TYPE(socklen_t, uint32_t);
 
         REGISTER_GLOBAL_MOCK_RETURNS(socket, test_socket, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(bind, 0, -1);

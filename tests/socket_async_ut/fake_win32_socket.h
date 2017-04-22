@@ -27,19 +27,17 @@ extern "C" {
 #define O_NONBLOCK  1 /* nonblocking I/O */
 #define	EACCES		13		/* Permission denied */
 
-#ifndef FD_SET
-#undef  FD_SETSIZE
     /* Make FD_SETSIZE match NUM_SOCKETS in socket.c */
-#define FD_SETSIZE    8 
 #define FD_SET(n, p)
-#define FD_CLR(n, p)  ((p)->fd_bits[(n)/8] &= ~(1 << ((n) & 7)))
-#define FD_ZERO(p)    memset((void*)(p),0,sizeof(*(p)))
+#define FD_CLR(n, p)
+#define FD_ZERO(p)
+
+    typedef size_t socklen_t;
 
     typedef struct fd_set {
-        unsigned char fd_bits[(FD_SETSIZE + 7) / 8];
+        unsigned char fd_bits[1];
     } fd_set;
 
-#endif /* FD_SET */
 
 #define htons(x) x
 
@@ -71,13 +69,13 @@ extern "C" {
 
     int fcntl(int fd, int cmd, int arg);
 
-    int bind(int sockfd, const struct sockaddr *addr, size_t addrlen);
+    int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
-    int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen); 
+    int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
     
-    int setsockopt(int sockfd, int level, int optname, const void *optval, size_t optlen);
+    int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 
-    int connect(int sockfd, const struct sockaddr *addr, size_t addrlen);
+    int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
     int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
