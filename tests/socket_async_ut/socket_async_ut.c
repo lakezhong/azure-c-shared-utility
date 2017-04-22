@@ -94,10 +94,10 @@ char test_msg[] = "Send this";
 // it might be.
 int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
 {
-    sockfd;
-    level;
-    optname;
-    optlen;
+    (void)sockfd;
+    (void)level;
+    (void)optname;
+    (void)optlen;
     int result = EAGAIN;
     switch (test_point)
     {
@@ -116,9 +116,9 @@ int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optl
 
 int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
-    timeout;
-    nfds;
-    readfds;
+    (void)timeout;
+    (void)nfds;
+    (void)readfds;
     // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
     // TP_TCP_IS_COMPLETE_READY_OK,        // 
     // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
