@@ -81,7 +81,7 @@ MOCKABLE_FUNCTION(, ssize_t, recv, int, sockfd, void*, buf, size_t, len, int, fl
 MOCKABLE_FUNCTION(, int, close, int, sockfd);
 #undef ENABLE_MOCKS
 
-static int test_socket = (int)0x4243;
+static int test_socket = (int)0x1;
 static int test_point;
 int fcntl(int fd, int cmd, ... /* arg */) { (void)fd; (void)cmd; return 0; }
 #define BAD_BUFFER_COUNT 10000
