@@ -66,7 +66,7 @@ extern "C" {
 
     int socket(int socket_family, int socket_type, int protocol);
 
-    int fcntl(int fd, int cmd, int arg);
+    int fcntl(int fd, int cmd, ... /* arg */);
 
     int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 

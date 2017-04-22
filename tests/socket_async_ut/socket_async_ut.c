@@ -83,7 +83,7 @@ MOCKABLE_FUNCTION(, int, close, int, sockfd);
 
 static int test_socket = (int)0x4243;
 static int test_point;
-int fcntl(int fd, int cmd, int arg) { fd; cmd; arg; return 0; }
+int fcntl(int fd, int cmd, ... /* arg */) { fd; cmd; return 0; }
 #define BAD_BUFFER_COUNT 10000
 char test_msg[] = "Send this";
 
