@@ -85,7 +85,6 @@ MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, soc
 MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout);
 MOCKABLE_FUNCTION(, ssize_t, send, int, sockfd, const void*, buf, size_t, len, int, flags);
 MOCKABLE_FUNCTION(, ssize_t, recv, int, sockfd, void*, buf, size_t, len, int, flags);
-MOCKABLE_FUNCTION(, int, FD_ISSET, int, sockfd, void*, dummy);
 MOCKABLE_FUNCTION(, int, close, int, sockfd);
 #undef ENABLE_MOCKS
 
@@ -119,6 +118,24 @@ int getsockopt(int sockfd, int level, int optname, void *optval, size_t *optlen)
     // This ugly cast is safe for this UT and this socket_async.c file because of the 
     // limited usage of getsockopt
     *((int*)optval) = result;
+    return 0;
+}
+
+int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
+{
+    timeout;
+    nfds;
+    readfds;
+    // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+    // TP_TCP_IS_COMPLETE_READY_OK,        // 
+    // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+    *writefds = 0;
+    *exceptfds = 0;
+    switch (test_point)
+    {
+    case TP_TCP_IS_COMPLETE_ERRSET_FAIL: *exceptfds = 1;
+    case TP_TCP_IS_COMPLETE_READY_OK: *writefds = 1;
+    }
     return 0;
 }
 
@@ -179,12 +196,9 @@ BEGIN_TEST_SUITE(socket_async_ut)
         REGISTER_GLOBAL_MOCK_RETURNS(select, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(send, sizeof(test_msg), -1);
         REGISTER_GLOBAL_MOCK_RETURNS(recv, sizeof(test_msg), -1);
-        // FD_ISSET is just a bool-ish function. It's convenient to use 0 as the 
-        // success case and 1 as fail because sometimes it's checking an error set
-        // and "success" == empty == 0
-        REGISTER_GLOBAL_MOCK_RETURNS(FD_ISSET, 0, 1);
 
         REGISTER_GLOBAL_MOCK_HOOK(setsockopt, my_setsockopt);
+        REGISTER_GLOBAL_MOCK_HOOK(select, my_select);
 
     }
 
@@ -336,17 +350,12 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 break;
             case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
                 NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_ERRSET_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                TEST_POINT(TP_TCP_IS_COMPLETE_ERRSET_FAIL, FD_ISSET(test_socket, IGNORED_PTR_ARG));
                 break;
             case TP_TCP_IS_COMPLETE_READY_OK:
                 NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
-                TEST_POINT(TP_TCP_IS_COMPLETE_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
                 break;
             default:
                 NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
-                NO_FAIL_TEST_POINT(TP_TCP_IS_COMPLETE_NOT_READY_OK, FD_ISSET(test_socket, IGNORED_PTR_ARG));
                 break;
             }
 

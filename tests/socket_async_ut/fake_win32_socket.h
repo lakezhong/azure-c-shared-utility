@@ -30,14 +30,13 @@ extern "C" {
     /* Make FD_SETSIZE match NUM_SOCKETS in socket.c */
 #define FD_SET(n, p)
 #define FD_CLR(n, p)
+#define FD_ISSET(n, p) (*(p) == 1)
 #define FD_ZERO(p)
 
     typedef size_t socklen_t;
     typedef int ssize_t;
 
-    typedef struct fd_set {
-        unsigned char fd_bits[1];
-    } fd_set;
+    typedef int fd_set;
 
 
 #define htons(x) x
@@ -80,13 +79,11 @@ extern "C" {
 
     int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
-    int send(ssize_t sockfd, const void *buf, size_t len, int flags);
+    ssize_t send(int sockfd, const void *buf, size_t len, int flags);
 
-    int recv(ssize_t sockfd, void *buf, size_t len, int flags);
+    ssize_t recv(int sockfd, void *buf, size_t len, int flags);
 
     int close(int fd);
-
-    int FD_ISSET(int sock, void* dummy);
 
 #ifdef __cplusplus
 }
