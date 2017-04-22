@@ -47,6 +47,10 @@ void my_gballoc_free(void* ptr)
  // Just use this header for convenience while writing the code in Windows. Later it will
  // only run for Linux variants.
 #include "fake_win32_socket.h"
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/select.h>
 #endif
 
 
