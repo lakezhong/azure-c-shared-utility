@@ -53,6 +53,7 @@ void my_gballoc_free(void* ptr)
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/errno.h>
 #endif
 
 
