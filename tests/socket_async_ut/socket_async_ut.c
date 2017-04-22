@@ -83,8 +83,8 @@ MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, sockle
 MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, socklen_t, optlen);
 MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
 MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout);
-MOCKABLE_FUNCTION(, int, send, int, sockfd, const void*, buf, size_t, len, int, flags);
-MOCKABLE_FUNCTION(, int, recv, int, sockfd, void*, buf, size_t, len, int, flags);
+MOCKABLE_FUNCTION(, ssize_t, send, int, sockfd, const void*, buf, size_t, len, int, flags);
+MOCKABLE_FUNCTION(, ssize_t, recv, int, sockfd, void*, buf, size_t, len, int, flags);
 MOCKABLE_FUNCTION(, int, FD_ISSET, int, sockfd, void*, dummy);
 MOCKABLE_FUNCTION(, int, close, int, sockfd);
 #undef ENABLE_MOCKS
@@ -168,6 +168,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
         result = umocktypes_charptr_register_types();
 		ASSERT_ARE_EQUAL(int, 0, result);
 
+        REGISTER_UMOCK_ALIAS_TYPE(ssize_t, int);
         REGISTER_UMOCK_ALIAS_TYPE(uint32_t, unsigned int);
         REGISTER_UMOCK_ALIAS_TYPE(socklen_t, uint32_t);
 

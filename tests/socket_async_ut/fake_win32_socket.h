@@ -33,6 +33,7 @@ extern "C" {
 #define FD_ZERO(p)
 
     typedef size_t socklen_t;
+    typedef int ssize_t;
 
     typedef struct fd_set {
         unsigned char fd_bits[1];
@@ -79,9 +80,9 @@ extern "C" {
 
     int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
-    int send(int sockfd, const void *buf, size_t len, int flags);
+    int send(ssize_t sockfd, const void *buf, size_t len, int flags);
 
-    int recv(int sockfd, void *buf, size_t len, int flags);
+    int recv(ssize_t sockfd, void *buf, size_t len, int flags);
 
     int close(int fd);
 
