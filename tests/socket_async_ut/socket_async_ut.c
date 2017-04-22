@@ -122,11 +122,10 @@ int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, st
     // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
     // TP_TCP_IS_COMPLETE_READY_OK,        // 
     // TTP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-    //FD_CLR(nfds, writefds);
-    //FD_CLR(nfds, exceptfds);
 
-    //FD_ZERO(writefds);
-    //FD_ZERO(exceptfds);
+    // This arguably odd sequence of FD_SET, etc. was necessary
+    // to make the linux_c-ubuntu-clang build succeed. FD_CLR
+    // did not work as expected on that system, but this does the job.
     switch (test_point)
     {
     case TP_TCP_IS_COMPLETE_ERRSET_FAIL: 
