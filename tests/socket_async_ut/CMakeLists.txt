@@ -16,6 +16,17 @@ set(${theseTestsName}_c_files
 
 include_directories(.)
 
+# Windows will eventually be built with a socket_async_win32.c because
+# the function signatures don't match Linux. That file will need
+# different unit tests because of the differing socket semantics
+
+
+if(WIN32)
+	include_directories(./win32_fake_linux)
+else()
+	include_directories(../../inc/azure_c_shared_utility/linux)
+endif()
+
 set(${theseTestsName}_h_files
 test_points.h
 keep_alive.h

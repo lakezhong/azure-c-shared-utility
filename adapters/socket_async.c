@@ -4,14 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef WIN32
-// WIN32 sockets are incompatible with other OS socket function signatures,
-// so there will be a socket_async_win32.c file to handle Windows.
-// This header is just for convenience while writing the unit test code in Windows.
-#include "fake_win32_socket.h"
-#else
-#include "azure_c_shared_utility/socket_async_os.h"
-#endif
+// This file is OS-specific, and is identified by setting include directories
+// in the project
+#include "socket_async_os.h"
 
 #include "azure_c_shared_utility/socket_async.h"
 #include "azure_c_shared_utility/xlogging.h"

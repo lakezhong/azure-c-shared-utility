@@ -12,22 +12,21 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#define	SOL_SOCKET	0xffff		/* options for socket level */
-#define	SO_ERROR	0x1007		/* get error status and clear */
-#define	AF_INET		2		/* internetwork: UDP, TCP, etc. */
-#define	SOCK_STREAM	1		/* stream socket */
-#define	SOCK_DGRAM	2		/* datagram socket */
-#define	SO_KEEPALIVE	0x0008		/* keep connections alive */
+#define	SOL_SOCKET	0xffff
+#define	SO_ERROR	0x1007
+#define	AF_INET		2
+#define	SOCK_STREAM	1
+#define	SOCK_DGRAM	2
+#define	SO_KEEPALIVE	0x0008
 #define IPPROTO_TCP     6
-#define TCP_KEEPIDLE   0x03    /* set pcb->keep_idle  - Same as TCP_KEEPALIVE, but use seconds for get/setsockopt */
-#define TCP_KEEPINTVL  0x04    /* set pcb->keep_intvl - Use seconds for get/setsockopt */
-#define TCP_KEEPCNT    0x05    /* set pcb->keep_cnt   - Use number of probes sent for get/setsockopt */
+#define TCP_KEEPIDLE   0x03
+#define TCP_KEEPINTVL  0x04
+#define TCP_KEEPCNT    0x05
 #define F_GETFL 3
 #define F_SETFL 4
-#define O_NONBLOCK  1 /* nonblocking I/O */
-#define	EACCES		13		/* Permission denied */
+#define O_NONBLOCK  1
+#define	EACCES		13
 
-    /* Make FD_SETSIZE match NUM_SOCKETS in socket.c */
 #define FD_SET(n, p) *(p) = 1
 #define FD_CLR(n, p) *(p) = 0
 #define FD_ISSET(n, p) (*(p) == 1)

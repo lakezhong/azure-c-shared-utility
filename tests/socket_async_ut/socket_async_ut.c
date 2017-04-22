@@ -42,19 +42,9 @@ void my_gballoc_free(void* ptr)
 
 #include "azure_c_shared_utility/socket_async.h"
 
- // WIN32 sockets are incompatible with other OS socket function signatures
-#ifdef WIN32
- // Just use this header for convenience while writing the code in Windows. Later it will
- // only run for Linux variants.
-#include "fake_win32_socket.h"
-#else
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/errno.h>
-#endif
+// This file is OS-specific, and is identified by setting include directories
+// in the project
+#include "socket_async_os.h"
 
 
 /**
