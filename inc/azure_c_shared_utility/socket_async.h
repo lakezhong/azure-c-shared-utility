@@ -54,12 +54,12 @@ extern "C" {
     *          for TCP connections only. May be NULL. Ignored for UDP sockets.
     *          Need only exist for the duration of the socket_async_create call.
     *
-    * @return   @c 0 if the API call is successful
-    *           or __FAILURE__ in case it fails. Error logging is
+    * @return   @c The created and configured SOCKET_ASYNC_HANDLE if the API call is successful
+    *           or SOCKET_ASYNC_INVALID_SOCKET in case it fails. Error logging is
     *           performed by the underlying concrete implementation, so no
     *           further error logging is necessary.
     */
-    MOCKABLE_FUNCTION(, int, socket_async_create, SOCKET_ASYNC_HANDLE*, sock, uint32_t, host_ipv4, uint16_t, port, bool, is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE, options);
+    MOCKABLE_FUNCTION(, SOCKET_ASYNC_HANDLE, socket_async_create, uint32_t, host_ipv4, uint16_t, port, bool, is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE, options);
 
     /**
     * @brief	Check whether a newly-created socket_async has completed its initial connection.

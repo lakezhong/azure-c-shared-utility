@@ -12,10 +12,9 @@
 // "_OK" in the name, then that test point is an expected failure.
 // Test points that look like XXXXX_1 or XXXXX_OK_1 are one of a group of different ways
 // to either succeed or fail at that test point
-enum
+typedef enum TEST_POINT_TAG
 {
     // Create UDP
-    TP_NULL_SOCK_HANDLE_FAIL,	// supplying a null pointer to socket handle
     TP_UDP_SOCKET_FAIL,			// socket create fail
     TP_UDP_BIND_FAIL,			// socket bind fail
     TP_UDP_CONNECT_FAIL,		// socket connect fail
@@ -62,7 +61,7 @@ enum
 
     // NOTE!!!! Update test_point_names below when adding to this enum
     TP_FINAL_OK     // Always keep as last entry
-};
+} TEST_POINT;
 
 typedef struct X {
     int fp;
@@ -74,9 +73,6 @@ typedef struct X {
 // The list of test_point_names is to help human-readability of the output
 static X test_point_names[] =
 {
-    // Null handle pointer
-    TEST_POINT_NAME(TP_NULL_SOCK_HANDLE_FAIL)
-
     // Create UDP
     TEST_POINT_NAME(TP_UDP_SOCKET_FAIL)
     TEST_POINT_NAME(TP_UDP_BIND_FAIL)
@@ -126,7 +122,7 @@ static X test_point_names[] =
 };
 
 
-static void test_point_label_output(int fp)
+static void test_point_label_output(TEST_POINT fp)
 {
     printf("\n\nTest point: %d  %s\n", fp, test_point_names[fp].name);
 }

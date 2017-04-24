@@ -33,7 +33,7 @@ It is anticipated that socket_async.c will work for all non-Windows environments
 
 **SRS_SOCKET_ASYNC_30_002: [** The socket_async shall implement the methods defined in `socket_async.h`.
 ```c
-int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, uint16_t port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
+SOCKET_ASYNC_HANDLE socket_async_create(uint32_t host_ipv4, uint16_t port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
 int socket_async_is_create_complete(SOCKET_ASYNC_HANDLE sock, bool* is_complete);
 int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* sent_count);
 int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* received_count);
@@ -45,10 +45,8 @@ void socket_async_destroy(SOCKET_ASYNC_HANDLE sock);
 ###   socket_async_create
 `socket_async_create` creates a socket and sets its configuration, including setting the socket to non-blocking. It then binds the socket to the supplied `host_ipv4` and `port`, and begins the process of connecting the socket to the bound address.
 ```c
-int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, uint16_t port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
+SOCKET_ASYNC_HANDLE socket_async_create(uint32_t host_ipv4, uint16_t port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
 ```
-
-**SRS_SOCKET_ASYNC_30_010: [** If the `sock` parameter is NULL, `socket_async_create` shall log an error and return _FAILURE_. **]**
 
 **SRS_SOCKET_ASYNC_30_011: [** The `host_ipv4` parameter shall be the 32-bit IP V4 of the target server. **]**
 
@@ -64,15 +62,15 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, uint16_t 
 
 **SRS_SOCKET_ASYNC_30_017: [** If the optional `options` parameter is NULL and `is_UDP` is false, `socket_async_create` shall disable TCP keep-alive. **]**
 
-**SRS_SOCKET_ASYNC_30_018: [** On success, the `sock` value shall be set to the created and configured SOCKET_ASYNC_HANDLE and `socket_async_create` shall return 0. **]**
+**SRS_SOCKET_ASYNC_30_018: [** On success, `socket_async_create` shall return the created and configured SOCKET_ASYNC_HANDLE. **]**
 
-**SRS_SOCKET_ASYNC_30_019: [** The socket returned in `sock` shall be non-blocking. **]**
+**SRS_SOCKET_ASYNC_30_019: [** The socket returned in shall be non-blocking. **]**
 
-**SRS_SOCKET_ASYNC_30_020: [** If socket option setting fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_020: [** If socket option setting fails, `socket_async_create` shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. **]**
 
-**SRS_SOCKET_ASYNC_30_021: [** If socket binding fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_021: [** If socket binding fails, `socket_async_create` shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. **]**
 
-**SRS_SOCKET_ASYNC_30_022: [** If socket connection fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_022: [** If socket connection fails, `socket_async_create` shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. **]**
 
 
 ###   socket_async_is_create_complete

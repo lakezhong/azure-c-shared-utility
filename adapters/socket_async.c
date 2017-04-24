@@ -20,137 +20,132 @@ static int get_socket_errno(int fd)
     return sock_errno;
 }
 
-int socket_async_create(SOCKET_ASYNC_HANDLE* sock_out, uint32_t serverIPv4, uint16_t port, 
+SOCKET_ASYNC_HANDLE socket_async_create(uint32_t serverIPv4, uint16_t port,
     bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options)
 {
-    int result;
-    int sock;
+    SOCKET_ASYNC_HANDLE result;
     struct sockaddr_in sock_addr;
 
-    if (sock_out == NULL)
+    /* Codes_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
+    int sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
+    if (sock < 0)
     {
-        /* Codes_SRS_SOCKET_ASYNC_30_010: [ If the sock parameter is NULL, socket_async_create shall log an error and return FAILURE. ]*/
-        LogError("sock_out is NULL");
-        result = __FAILURE__;
+        /* Codes_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+        // An essentially impossible failure, not worth logging errno()
+        LogError("create socket failed");
+        result = SOCKET_ASYNC_INVALID_SOCKET;
     }
     else
     {
-        /* Codes_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
-        sock = socket(AF_INET, is_UDP ? SOCK_DGRAM : SOCK_STREAM, 0);
-        if (sock < 0)
+        bool setopt_ok;
+        int setopt_return;
+        // None of the currently defined options apply to UDP
+        /* Codes_SRS_SOCKET_ASYNC_30_015: [ If is_UDP is true, the optional options parameter shall be ignored. ]*/
+        if (!is_UDP)
         {
-            /* Codes_SRS_SOCKET_ASYNC_30_023: [ If socket creation fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            // An essentially impossible failure, not worth logging errno()
-            LogError("create socket failed");
-            *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
-            result = __FAILURE__;
-        }
-        else
-        {
-            int setopt_ret = 0;
-            // None of the currently defined options apply to UDP
-            /* Codes_SRS_SOCKET_ASYNC_30_015: [ If is_UDP is true, the optional options parameter shall be ignored. ]*/
-            if (!is_UDP)
+            if (options != NULL)
             {
-                if (options != NULL)
+                /* Codes_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is non-negative, socket_async_create shall set the socket options to the provided options values. ]*/
+                if (options->keep_alive >= 0)
                 {
-                    /* Codes_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is non-negative, socket_async_create shall set the socket options to the provided options values. ]*/
-                    if (options->keep_alive >= 0)
-                    {
-                        int keepAlive = 1; //enable keepalive
-                        setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&(options->keep_idle), sizeof((options->keep_idle)));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&(options->keep_interval), sizeof((options->keep_interval)));
-                        setopt_ret = setopt_ret || setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&(options->keep_count), sizeof((options->keep_count)));
-                    }
-                    else
-                    {
-                        /* Codes_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
-                        // < 0 means use system defaults, so do nothing
-                    }
+                    int keepAlive = 1; //enable keepalive
+                    setopt_ok = 0 == (setopt_return = setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive)));
+                    setopt_ok = setopt_ok && 0 == (setopt_return = setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&(options->keep_idle), sizeof((options->keep_idle))));
+                    setopt_ok = setopt_ok && 0 == (setopt_return = setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&(options->keep_interval), sizeof((options->keep_interval))));
+                    setopt_ok = setopt_ok && 0 == (setopt_return = setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&(options->keep_count), sizeof((options->keep_count))));
                 }
                 else
                 {
-                    /* Codes_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
-                    int keepAlive = 0; //disable keepalive
-                    setopt_ret = setopt_ret || setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                    /* Codes_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
+                    // < 0 means use system defaults, so do nothing
+                    setopt_ok = true;
+                    setopt_return = 0;
                 }
-            }
-
-            // NB: On full-sized (multi-process) systems it would be necessary to use the SO_REUSEADDR option to 
-            // grab the socket from any earlier (dying) invocations of the process and then deal with any 
-            // residual junk in the connection stream. This doesn't happen with embedded, so it doesn't need
-            // to be defended against.
-
-            if (setopt_ret != 0)
-            {
-                /* Codes_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-                LogError("setsockopt failed: %d ", setopt_ret);
-                *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
-                result = __FAILURE__;
             }
             else
             {
-                /* Codes_SRS_SOCKET_ASYNC_30_019: [ The socket returned in sock shall be non-blocking. ]*/
-                // When supplied with either F_GETFL and F_SETFL parameters, the fcntl function
-                // does simple bit flips which have no error path, so it is not necessary to
-                // check for errors. (Source checked for linux and lwIP).
-                int originalFlags = fcntl(sock, F_GETFL, 0);
-                (void)fcntl(sock, F_SETFL, originalFlags | O_NONBLOCK);
+                /* Codes_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
+                int keepAlive = 0; //disable keepalive
+                setopt_ok = 0 == setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepAlive, sizeof(keepAlive));
+                setopt_return = 0;
+            }
+        }
+        else
+        {
+            setopt_ok = true;
+            setopt_return = 0;
+        }
+
+        // NB: On full-sized (multi-process) systems it would be necessary to use the SO_REUSEADDR option to 
+        // grab the socket from any earlier (dying) invocations of the process and then deal with any 
+        // residual junk in the connection stream. This doesn't happen with embedded, so it doesn't need
+        // to be defended against.
+
+        if (!setopt_ok)
+        {
+            /* Codes_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+            // setsockopt has no real possibility of failing due to the way it's being used here, so there's no need 
+            // to spend memory trying to log the not-really-possible errno.
+            LogError("setsockopt failed: %d", setopt_return);
+            result = SOCKET_ASYNC_INVALID_SOCKET;
+        }
+        else
+        {
+            /* Codes_SRS_SOCKET_ASYNC_30_019: [ The socket returned shall be non-blocking. ]*/
+            // When supplied with either F_GETFL and F_SETFL parameters, the fcntl function
+            // does simple bit flips which have no error path, so it is not necessary to
+            // check for errors. (Source checked for linux and lwIP).
+            int originalFlags = fcntl(sock, F_GETFL, 0);
+            (void)fcntl(sock, F_SETFL, originalFlags | O_NONBLOCK);
+
+            memset(&sock_addr, 0, sizeof(sock_addr));
+            sock_addr.sin_family = AF_INET;
+            sock_addr.sin_addr.s_addr = 0;
+            sock_addr.sin_port = 0; // random local port
+
+            int bind_ret = bind(sock, (const struct sockaddr*)&sock_addr, sizeof(sock_addr));
+
+            if (bind_ret != 0)
+            {
+                /* Codes_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+                LogError("bind socket failed: %d", get_socket_errno(sock));
+                result = SOCKET_ASYNC_INVALID_SOCKET;
+            }
+            else
+            {
 
                 memset(&sock_addr, 0, sizeof(sock_addr));
                 sock_addr.sin_family = AF_INET;
-                sock_addr.sin_addr.s_addr = 0;
-                sock_addr.sin_port = 0; // random local port
+                /* Codes_SRS_SOCKET_ASYNC_30_011: [ The host_ipv4 parameter shall be the 32-bit IP V4 of the target server. ]*/
+                sock_addr.sin_addr.s_addr = serverIPv4;
+                /* Codes_SRS_SOCKET_ASYNC_30_012: [ The port parameter shall be the port number for the target server. ]*/
+                sock_addr.sin_port = htons(port);
 
-                int bind_ret = bind(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
-
-                if (bind_ret != 0)
+                int connect_ret = connect(sock, (const struct sockaddr*)&sock_addr, sizeof(sock_addr));
+                if (connect_ret == -1)
                 {
-                    /* Codes_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-                    LogError("bind socket failed: %d", get_socket_errno(sock));
-                    *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
-                    result = __FAILURE__;
-                }
-                else
-                {
-
-                    memset(&sock_addr, 0, sizeof(sock_addr));
-                    sock_addr.sin_family = AF_INET;
-                    /* Codes_SRS_SOCKET_ASYNC_30_011: [ The host_ipv4 parameter shall be the 32-bit IP V4 of the target server. ]*/
-                    sock_addr.sin_addr.s_addr = serverIPv4;
-                    /* Codes_SRS_SOCKET_ASYNC_30_012: [ The port parameter shall be the port number for the target server. ]*/
-                    sock_addr.sin_port = htons(port);
-
-                    int connect_ret = connect(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
-                    if (connect_ret == -1)
+                    int sockErr = get_socket_errno(sock);
+                    if (sockErr != EINPROGRESS)
                     {
-                        int sockErr = get_socket_errno(sock);
-                        if (sockErr != EINPROGRESS)
-                        {
-                            /* Codes_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-                            LogError("Socket connect failed, not EINPROGRESS: %d", sockErr);
-                            *sock_out = SOCKET_ASYNC_INVALID_SOCKET;
-                            result = __FAILURE__;
-                        }
-                        else
-                        {
-                            // This is the normally expected code path for our non-blocking socket
-                            /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
-                            result = 0;
-                            *sock_out = sock;
-                        }
+                        /* Codes_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+                        LogError("Socket connect failed, not EINPROGRESS: %d", sockErr);
+                        result = SOCKET_ASYNC_INVALID_SOCKET;
                     }
                     else
                     {
-                        /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, the sock value shall be set to the created and configured SOCKET_ASYNC_HANDLE and socket_async_create shall return 0. ]*/
-                        // This result would be a surprise because a non-blocking socket
-                        // returns EINPROGRESS. But it could happen if this thread got
-                        // blocked for a while by the system while the handshake proceeded,
-                        // or for a UDP socket.
-                        result = 0;
-                        *sock_out = sock;
+                        // This is the normally expected code path for our non-blocking socket
+                        /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+                        result = sock;
                     }
+                }
+                else
+                {
+                    /* Codes_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+                    // This result would be a surprise because a non-blocking socket
+                    // returns EINPROGRESS. But it could happen if this thread got
+                    // blocked for a while by the system while the handshake proceeded,
+                    // or for a UDP socket.
+                    result = sock;
                 }
             }
         }
@@ -234,7 +229,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, const void* buffer, size_t size,
         }
         else
         {
-            int send_result = send(sock, buffer, size, 0);
+            ssize_t send_result = send(sock, buffer, size, 0);
             if (send_result < 0)
             {
                 int sock_err = get_socket_errno(sock);
@@ -284,7 +279,7 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
         }
         else
         {
-            int recv_result = recv(sock, buffer, size, 0);
+            ssize_t recv_result = recv(sock, buffer, size, 0);
             if (recv_result < 0)
             {
                 int sock_err = get_socket_errno(sock);

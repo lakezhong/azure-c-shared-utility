@@ -52,9 +52,9 @@ extern "C" {
     };
 
     struct sockaddr {
-        uint8_t	sa_len;			/* total length */
-        uint8_t	sa_family;		/* address family */
-        char	sa_data[14];		/* actually longer; address value */
+        uint8_t         sin_family; /* address family: AF_INET */
+        uint16_t        sin_port;   /* port in network byte order */
+        struct in_addr  sin_addr;   /* internet address */
     };
 
     struct timeval {

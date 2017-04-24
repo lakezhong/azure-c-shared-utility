@@ -13,6 +13,8 @@ static int keep_count;     // number of times to try before declaring failure (i
 #define test_keep_idle 22
 #define test_keep_interval 33 
 #define test_keep_count 66
+#define KEEP_ALIVE_UNDEFINED -1
+#define KEEP_ALIVE_FALSE 0
 
 static int my_setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
 {
@@ -48,44 +50,35 @@ static int my_setsockopt(int sockfd, int level, int optname, const void *optval,
 
 static void init_keep_alive_values()
 {
-    keep_alive = -1;
-    keep_idle = -1;
-    keep_interval = -1;
-    keep_count = -1;
+    keep_alive = KEEP_ALIVE_UNDEFINED;
+    keep_idle = KEEP_ALIVE_UNDEFINED;
+    keep_interval = KEEP_ALIVE_UNDEFINED;
+    keep_count = KEEP_ALIVE_UNDEFINED;
 }
 
 static void ASSERT_KEEP_ALIVE_UNTOUCHED()
 {
-    if (keep_alive != -1 ||
-        keep_idle != -1 ||
-        keep_interval != -1 ||
-        keep_count != -1)
-    {
-        ASSERT_FAIL("Unexpected keep-alive touched values");
-    }
+    ASSERT_ARE_EQUAL(int, keep_alive, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_EQUAL(int, keep_idle, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_EQUAL(int, keep_interval, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_EQUAL(int, keep_count, KEEP_ALIVE_UNDEFINED);
 }
 
 static void ASSERT_KEEP_ALIVE_FALSE()
 {
-    if (keep_alive != 0 ||
-        keep_idle != -1 ||
-        keep_interval != -1 ||
-        keep_count != -1)
-    {
-        ASSERT_FAIL("keep-alive should be false");
-    }
+    ASSERT_ARE_EQUAL(int, keep_alive, KEEP_ALIVE_FALSE);
+    ASSERT_ARE_EQUAL(int, keep_idle, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_EQUAL(int, keep_interval, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_EQUAL(int, keep_count, KEEP_ALIVE_UNDEFINED);
 }
 
 /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
 static void ASSERT_KEEP_ALIVE_SET()
 {
-    if (keep_alive != test_keep_alive ||
-        keep_count != test_keep_count ||
-        keep_idle != test_keep_idle ||
-        keep_interval != test_keep_interval)
-    {
-        ASSERT_FAIL("Unexpected keep-alive set values");
-    }
+    ASSERT_ARE_NOT_EQUAL(int, keep_alive, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_NOT_EQUAL(int, keep_idle, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_NOT_EQUAL(int, keep_interval, KEEP_ALIVE_UNDEFINED);
+    ASSERT_ARE_NOT_EQUAL(int, keep_count, KEEP_ALIVE_UNDEFINED);
 }
 
 
