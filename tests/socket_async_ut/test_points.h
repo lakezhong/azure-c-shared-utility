@@ -12,7 +12,7 @@
 // "_OK" in the name, then that test point is an expected failure.
 // Test points that look like XXXXX_1 or XXXXX_OK_1 are one of a group of different ways
 // to either succeed or fail at that test point
-typedef enum TEST_PATH_TAG
+typedef enum TEST_PATH_ID_TAG
 {
     // Create UDP
     TP_UDP_SOCKET_FAIL,			// socket create fail
@@ -62,7 +62,7 @@ typedef enum TEST_PATH_TAG
 
     // NOTE!!!! Update test_path_names below when adding to this enum
     TP_FINAL_OK     // Always keep as last entry
-} TEST_PATH;
+} TEST_PATH_ID;
 
 typedef struct X {
     int fp;
@@ -124,7 +124,7 @@ static X test_path_names[] =
 };
 
 
-static void test_path_label_output(TEST_PATH fp)
+static void test_path_label_output(TEST_PATH_ID fp)
 {
     printf("\n\nTest point: %d  %s\n", fp, test_path_names[fp].name);
 }
@@ -144,7 +144,7 @@ static void InitTestPoints()
     memset(test_paths, 0xff, sizeof(test_paths));
 }
 
-static void begin_arrange(TEST_PATH test_path)
+static void begin_arrange(TEST_PATH_ID test_path)
 {
     // Show the test point description in the output for the sake of 
     // human readability
@@ -161,7 +161,7 @@ static void begin_arrange(TEST_PATH test_path)
 
 }
 
-static void begin_act(TEST_PATH test_path)
+static void begin_act(TEST_PATH_ID test_path)
 {
     umock_c_negative_tests_snapshot();
 
