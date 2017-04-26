@@ -40,7 +40,10 @@
 
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
-MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
+#ifdef __cplusplus
+extern "C" {
+#endif
+    MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
 MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
 MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, socklen_t, optlen);
 MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
@@ -48,6 +51,10 @@ MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds,
 MOCKABLE_FUNCTION(, ssize_t, send, int, sockfd, const void*, buf, size_t, len, int, flags);
 MOCKABLE_FUNCTION(, ssize_t, recv, int, sockfd, void*, buf, size_t, len, int, flags);
 MOCKABLE_FUNCTION(, int, close, int, sockfd);
+#ifdef __cplusplus
+}
+#endif
+
 #undef ENABLE_MOCKS
 
 static int bool_Compare(bool left, bool right)
@@ -236,7 +243,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
     TEST_FUNCTION(socket_async_destroy_test)
     {
-        for (test_path = TP_DESTROY_OK; test_path <= TP_DESTROY_OK; test_path++)
+        for (test_path = TP_DESTROY_OK; test_path <= TP_DESTROY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
 
@@ -256,7 +263,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
     TEST_FUNCTION(socket_async_recv_test)
     {
-        for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path++)
+        for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
 
@@ -347,7 +354,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
     TEST_FUNCTION(socket_async_send_test)
     {
-        for (test_path = TP_SEND_NULL_BUFFER_FAIL; test_path <= TP_SEND_OK; test_path++)
+        for (test_path = TP_SEND_NULL_BUFFER_FAIL; test_path <= TP_SEND_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
             init_keep_alive_values();
@@ -444,7 +451,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
     TEST_FUNCTION(socket_async_is_create_complete_test)
     {
-        for (test_path = TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL; test_path <= TP_TCP_IS_COMPLETE_NOT_READY_OK; test_path++)
+        for (test_path = TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL; test_path <= TP_TCP_IS_COMPLETE_NOT_READY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
 
@@ -539,7 +546,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
 
     TEST_FUNCTION(socket_async_create_tcp_test)
     {
-        for (test_path = TP_TCP_SOCKET_FAIL; test_path <= TP_TCP_CONNECT_SUCCESS; test_path++)
+        for (test_path = TP_TCP_SOCKET_FAIL; test_path <= TP_TCP_CONNECT_SUCCESS; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
             init_keep_alive_values();
@@ -688,7 +695,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     TEST_FUNCTION(socket_async_create_udp_test)
     {
 
-        for (test_path = TP_UDP_SOCKET_FAIL; test_path <= TP_UDP_CONNECT_SUCCESS; test_path++)
+        for (test_path = TP_UDP_SOCKET_FAIL; test_path <= TP_UDP_CONNECT_SUCCESS; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
 
