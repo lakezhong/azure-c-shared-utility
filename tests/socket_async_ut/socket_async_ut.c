@@ -84,7 +84,7 @@ char test_msg[] = "Send this";
 #include "test_points.h"
 #include "keep_alive.h"
 
-static TEST_PATH test_path;
+static TEST_PATH_ID test_path;
 
 // getsockopt is only used to retrieve extended errors, so this is simpler than
 // it might be.
