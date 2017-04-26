@@ -318,7 +318,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_RECEIVE_OK:            /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             // Does received_count match expectations>?
@@ -338,7 +338,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, sizeof(test_msg), "Unexpected returned received_count");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             end_assertions();   ////// End the Assertion phase and verify call sequence 
@@ -378,7 +378,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 //TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG)).IgnoreArgument(1);
                 TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             begin_act(test_path);       ////// Begin the Act phase 
@@ -418,7 +418,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             // Does sent_count match expectations>?
@@ -435,7 +435,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, sizeof(test_msg), "Unexpected returned sent_count value is not message size");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             end_assertions();   ////// End the Assertion phase and verify call sequence 
@@ -473,7 +473,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_IS_COMPLETE_NOT_READY_OK:
                 TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             begin_act(test_path);       ////// Begin the Act phase 
@@ -513,7 +513,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             // Does is_compete match expectations?
@@ -530,7 +530,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
                 ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected returned is_complete is false");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             end_assertions();   ////// End the Assertion phase and verify call sequence 
@@ -599,7 +599,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
                 TEST_PATH(TP_TCP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
                 TEST_PATH(TP_TCP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             begin_act(test_path);       ////// Begin the Act phase 
@@ -647,7 +647,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_SOCKET_OPT_SET_OK:
                 ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             // Do the keep-alive values match expectations?
@@ -678,7 +678,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
             case TP_TCP_CONNECT_SUCCESS:
                 ASSERT_KEEP_ALIVE_FALSE();
                 break;
-            default: ASSERT_FAIL("Unhandled test path")
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             end_assertions();   ////// End the Assertion phase and verify call sequence 
