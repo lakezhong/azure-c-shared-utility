@@ -29,6 +29,7 @@ typedef enum TEST_PATH_TAG
     TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
     TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
     TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
+    TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK,   // setsockopt use system defaults for keep-alive
     TP_TCP_BIND_FAIL,			// socket bind fail
     TP_TCP_CONNECT_FAIL,		// socket connect fail
     TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
@@ -88,6 +89,7 @@ static X test_path_names[] =
     TEST_PATH_NAME(TP_TCP_SOCKET_OPT_3_FAIL)
     TEST_PATH_NAME(TP_TCP_SOCKET_OPT_DEFAULT_FAIL)
     TEST_PATH_NAME(TP_TCP_SOCKET_OPT_SET_OK)
+    TEST_PATH_NAME(TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK)
 
     TEST_PATH_NAME(TP_TCP_BIND_FAIL)
     TEST_PATH_NAME(TP_TCP_CONNECT_FAIL)
@@ -142,6 +144,51 @@ static void InitTestPoints()
     memset(test_paths, 0xff, sizeof(test_paths));
 }
 
+static void begin_arrange(TEST_PATH test_path)
+{
+    // Show the test point description in the output for the sake of 
+    // human readability
+    printf("\n\nTest path: %d  %s\n", test_path, test_path_names[test_path].name);
+
+    // Init the test_paths
+    expected_call_count = 0;
+    memset(test_paths, 0xff, sizeof(test_paths));
+
+    // Init the negative mocks
+    umock_c_reset_all_calls();
+    int negativeTestsInitResult = umock_c_negative_tests_init();
+    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+}
+
+static void begin_act(TEST_PATH test_path)
+{
+    umock_c_negative_tests_snapshot();
+
+    umock_c_negative_tests_reset();
+
+    // Each test pass has no more than one place where umock_c_negative_tests_fail_call 
+    // will force a failure.   
+    uint16_t fail_index = test_paths[test_path];
+    if (fail_index != 0xffff)
+    {
+        umock_c_negative_tests_fail_call(fail_index);
+    }
+}
+
+static void end_assertions()
+{
+    /**
+    * The follow assert will compare the expected calls with the actual calls. If it is different,
+    *    it will show the serialized strings with the differences in the log.
+    */
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    ///cleanup
+    umock_c_negative_tests_deinit();
+}
+
+
 
 // TEST_PATH means that the call is expected at the provided fail point and beyond,
 // and the framework will fail the call the first time it hits it.
@@ -152,17 +199,17 @@ static void InitTestPoints()
     expected_call_count++;		\
 }
 
-// NO_FAIL_TEST_PATH means that this call is expected at the provided test point and beyond,
+// TEST_PATH_NO_FAIL means that this call is expected at the provided test point and beyond,
 // and the framework will not fail the call.
-// The messy macro on line 2 of NO_FAIL_TEST_PATH is the expansion of STRICT_EXPECTED_CALL
-#define NO_FAIL_TEST_PATH(fp, call) if(test_path >= fp) {  \
+// The messy macro on line 2 of TEST_PATH_NO_FAIL is the expansion of STRICT_EXPECTED_CALL
+#define TEST_PATH_NO_FAIL(fp, call) if(test_path >= fp) {  \
     C2(get_auto_ignore_args_function_, call)(C2(umock_c_strict_expected_,call), #call);			\
     expected_call_count++;		\
 }
 
 // TEAR_DOWN_POINT means that this call is expected everywhere past the provided
 // test point, and the framework will not fail the call. The semantics of this call are only
-// slightly different from NO_FAIL_TEST_PATH, but this semantic improves readability
+// slightly different from TEST_PATH_NO_FAIL, but this semantic improves readability
 // for setting up calls such as Close which are part of a tear-down process.
 // The messy macro on line 2 of TEAR_DOWN_POINT is the expansion of STRICT_EXPECTED_CALL
 #define TEAR_DOWN_POINT(fp, call) if(test_path > fp) {  \
