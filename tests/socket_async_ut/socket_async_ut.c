@@ -40,12 +40,14 @@
 
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-    MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
+MOCKABLE_FUNCTION(, int, socket, int, af, int, type, int, protocol);
 MOCKABLE_FUNCTION(, int, bind, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
 MOCKABLE_FUNCTION(, int, setsockopt, int, sockfd, int, level, int, optname, const void*, optval, socklen_t, optlen);
+MOCKABLE_FUNCTION(, int, getsockopt, int, sockfd, int, level, int, optname, void*, optval, socklen_t*, optlen);
 MOCKABLE_FUNCTION(, int, connect, int, sockfd, const struct sockaddr*, addr, socklen_t, addrlen);
 MOCKABLE_FUNCTION(, int, select, int, nfds, fd_set*, readfds, fd_set*, writefds, fd_set*, exceptfds, struct timeval*, timeout);
 MOCKABLE_FUNCTION(, ssize_t, send, int, sockfd, const void*, buf, size_t, len, int, flags);
@@ -81,18 +83,16 @@ static void _Bool_ToString(char* string, size_t bufferSize, _Bool val)
 }
 #endif
 
-static int test_socket = (int)0x1;
-static uint16_t test_port = 0x5566;
-static uint32_t test_ipv4 = 0x11223344;
-int fcntl(int fd, int cmd, ... /* arg */) { (void)fd; (void)cmd; return 0; }
-#define BAD_BUFFER_COUNT 10000
-char test_msg[] = "Send this";
-
+#include "test_defines.h"
 #include "test_points.h"
 #include "keep_alive.h"
 
+// A non-tested function from socket.h
+int fcntl(int fd, int cmd, ... /* arg */) { (void)fd; (void)cmd; return 0; }
+
 static TEST_PATH_ID test_path;
 
+#if(0)
 // getsockopt is only used to retrieve extended errors, so this is simpler than
 // it might be.
 int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
@@ -116,6 +116,7 @@ int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optl
     *((int*)optval) = result;
     return 0;
 }
+#endif
 
 int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
@@ -195,6 +196,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
         REGISTER_GLOBAL_MOCK_RETURNS(bind, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(connect, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(setsockopt, 0, -1);
+        REGISTER_GLOBAL_MOCK_RETURNS(getsockopt, EAGAIN, EXTENDED_ERROR_FAIL);
         REGISTER_GLOBAL_MOCK_RETURNS(select, 0, -1);
         REGISTER_GLOBAL_MOCK_RETURNS(send, sizeof(test_msg), -1);
         REGISTER_GLOBAL_MOCK_RETURNS(recv, sizeof(test_msg), -1);
@@ -241,26 +243,241 @@ BEGIN_TEST_SUITE(socket_async_ut)
         TEST_MUTEX_RELEASE(g_testByTest);
     }
 
-    TEST_FUNCTION(socket_async_destroy_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
+    TEST_FUNCTION(socket_async_destroy__succeeds)
     {
-        for (test_path = TP_DESTROY_OK; test_path <= TP_DESTROY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
+        ///arrange
+        STRICT_EXPECTED_CALL(close(test_socket));
+
+        ///act
+        socket_async_destroy(test_socket);
+
+        ///assert
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_receive_null_buffer__fails)
+    {
+        ///arrange
+        // no calls expected
+
+        char *buffer = NULL;
+        size_t size = sizeof(test_msg);
+        size_t received_count_receptor = BAD_BUFFER_COUNT;
+        size_t *received_count = &received_count_receptor;
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, received_count_receptor, BAD_BUFFER_COUNT, "Unexpected received_count_receptor");
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_receive_null_received_count__fails)
+    {
+        ///arrange
+        // no calls expected
+
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        //size_t received_count_receptor = BAD_BUFFER_COUNT;
+        size_t *received_count = NULL;
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_receive_recv_fail__fails)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t received_count_receptor = BAD_BUFFER_COUNT;
+        size_t *received_count = &received_count_receptor;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
+
+        STRICT_EXPECTED_CALL(recv(test_socket, buffer, size, RECV_ZERO_FLAGS)).SetReturn(RECV_FAIL_RETURN);
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, received_count_receptor, BAD_BUFFER_COUNT, "Unexpected received_count_receptor");
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
+    TEST_FUNCTION(socket_async_receive_recv_waiting__succeeds)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t received_count_receptor = BAD_BUFFER_COUNT;
+        size_t *received_count = &received_count_receptor;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_WAITING;
+
+        STRICT_EXPECTED_CALL(recv(test_socket, buffer, size, RECV_ZERO_FLAGS)).SetReturn(RECV_FAIL_RETURN);
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, received_count_receptor, 0, "Unexpected received_count_receptor");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
+    TEST_FUNCTION(socket_async_receive_recv__succeeds)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t received_count_receptor;
+        size_t *received_count = &received_count_receptor;
+
+        STRICT_EXPECTED_CALL(recv(test_socket, buffer, size, RECV_ZERO_FLAGS));
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, received_count_receptor, sizeof(test_msg), "Unexpected received_count_receptor");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+
+#if(0)
+    TEST_FUNCTION(socket_async_recv_test)
+    {
+        for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
 
-            /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
-            TEST_PATH_NO_FAIL(TP_DESTROY_OK, close(test_socket));
+                                        // Receive test paths
+                                        //
+                                        // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
+                                        // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
+                                        // TP_RECEIVE_FAIL,                       // receive failed
+                                        // TP_RECEIVE_WAITING_OK,                 // receive not ready
+                                        // TP_RECEIVE_OK,     
+                                        // 
+            switch (test_path)
+            {
+            case TP_RECEIVE_FAIL:
+                TEST_PATH(TP_RECEIVE_FAIL, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_RECEIVE_WAITING_OK:
+                TEST_PATH(TP_RECEIVE_WAITING_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            case TP_RECEIVE_OK:
+                TEST_PATH_NO_FAIL(TP_RECEIVE_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            }
 
             begin_act(test_path);       ////// Begin the Act phase 
 
-            /* Tests_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
-            socket_async_destroy(test_socket);
+                                        /////////////////////////////////////////////////////////////////////////////////////////////////////
+                                        // Receive test paths
+                                        //
+                                        // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
+                                        // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
+                                        // TP_RECEIVE_FAIL,                       // receive failed
+                                        // TP_RECEIVE_WAITING_OK,                 // receive not ready
+                                        // TP_RECEIVE_OK,     
+                                        // 
 
-            // Nothing to assert for socket_async_destroy except the call sequence
+                                        /////////////////////////////////////////////////////////////////////////////////////////////////////
+                                        // Set up input parameters
+            char *buffer = test_path == TP_RECEIVE_NULL_BUFFER_FAIL ? NULL : test_msg;
+            size_t received_count = BAD_BUFFER_COUNT;
+            size_t *received_count_param = test_path == TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL ? NULL : &received_count;
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Call the function under test
+            int receive_result = socket_async_receive(test_socket, buffer, sizeof(test_msg), received_count_param);
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Begin assertion phase
+
+            // Does receive_result match expectations>?
+            switch (test_path)
+            {
+            case TP_RECEIVE_NULL_BUFFER_FAIL:           /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
+            case TP_RECEIVE_FAIL:                       /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
+                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+                break;
+            case TP_RECEIVE_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
+            case TP_RECEIVE_OK:            /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
+                break;
+            default: ASSERT_FAIL("Unhandled test path");
+            }
+
+            // Does received_count match expectations>?
+            switch (test_path)
+            {
+            case TP_RECEIVE_NULL_BUFFER_FAIL:
+            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:
+            case TP_RECEIVE_FAIL:
+                // The received_count should not have been touched
+                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, BAD_BUFFER_COUNT, "Unexpected returned received_count has been set");
+                break;
+            case TP_RECEIVE_WAITING_OK:
+                /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, 0, "Unexpected returned received_count of non-zero");
+                break;
+            case TP_RECEIVE_OK:
+                /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, sizeof(test_msg), "Unexpected returned received_count");
+                break;
+            default: ASSERT_FAIL("Unhandled test path");
+            }
 
             end_assertions();   ////// End the Assertion phase and verify call sequence 
         }
     }
+#endif
 
+#if(0)
     TEST_FUNCTION(socket_async_recv_test)
     {
         for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
@@ -744,6 +961,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
             end_assertions();   ////// End the Assertion phase and verify call sequence 
         }
     }
-
+#endif
 
 END_TEST_SUITE(socket_async_ut)
