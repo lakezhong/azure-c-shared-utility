@@ -383,91 +383,143 @@ BEGIN_TEST_SUITE(socket_async_ut)
         // no cleanup necessary
     }
 
+    /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_send_null_buffer__fails)
+    {
+        ///arrange
+        // no calls expected
+
+        //char *buffer = test_msg;
+        char *buffer = NULL;
+        size_t size = sizeof(test_msg);
+        size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        size_t *sent_count = &sent_count_receptor;
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_send_null_sent_count__fails)
+    {
+        ///arrange
+        // no calls expected
+
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        //size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        //size_t *sent_count = &sent_count_receptor;
+        size_t *sent_count = NULL;
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
 
 #if(0)
-    TEST_FUNCTION(socket_async_recv_test)
+    TEST_FUNCTION(socket_async_send_test)
     {
-        for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
+        for (test_path = TP_SEND_NULL_BUFFER_FAIL; test_path <= TP_SEND_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
+            init_keep_alive_values();
 
-                                        // Receive test paths
-                                        //
-                                        // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
-                                        // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
-                                        // TP_RECEIVE_FAIL,                       // receive failed
-                                        // TP_RECEIVE_WAITING_OK,                 // receive not ready
-                                        // TP_RECEIVE_OK,     
-                                        // 
+            // Send test paths
+            //
+            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
+            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
+            // TP_SEND_FAIL,                       // send failed
+            // TP_SEND_WAITING_OK,                 // send not ready
+            // TP_SEND_OK,     
+            // 
             switch (test_path)
             {
-            case TP_RECEIVE_FAIL:
-                TEST_PATH(TP_RECEIVE_FAIL, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_SEND_NULL_BUFFER_FAIL:
+            case TP_SEND_NULL_SENT_COUNT_FAIL:
+                // No expected calls here
                 break;
-            case TP_RECEIVE_WAITING_OK:
-                TEST_PATH(TP_RECEIVE_WAITING_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_SEND_FAIL:
+                TEST_PATH(TP_SEND_FAIL, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
                 break;
-            case TP_RECEIVE_OK:
-                TEST_PATH_NO_FAIL(TP_RECEIVE_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_SEND_WAITING_OK:
+                // The "Fail" of send is not a failure, but rather returns a positive value for bytes sent 
+                TEST_PATH(TP_SEND_WAITING_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
                 break;
+            case TP_SEND_OK:
+                // The "No Fail" of send returns 0, which is a successful "no data available"
+                //TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG)).IgnoreArgument(1);
+                TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+                break;
+            default: ASSERT_FAIL("Unhandled test path");
             }
 
             begin_act(test_path);       ////// Begin the Act phase 
 
                                         /////////////////////////////////////////////////////////////////////////////////////////////////////
-                                        // Receive test paths
+                                        // Send test paths
                                         //
-                                        // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
-                                        // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
-                                        // TP_RECEIVE_FAIL,                       // receive failed
-                                        // TP_RECEIVE_WAITING_OK,                 // receive not ready
-                                        // TP_RECEIVE_OK,     
+                                        // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
+                                        // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
+                                        // TP_SEND_FAIL,                       // send failed
+                                        // TP_SEND_WAITING_OK,                 // send not ready
+                                        // TP_SEND_OK,     
                                         // 
 
                                         /////////////////////////////////////////////////////////////////////////////////////////////////////
                                         // Set up input parameters
-            char *buffer = test_path == TP_RECEIVE_NULL_BUFFER_FAIL ? NULL : test_msg;
-            size_t received_count = BAD_BUFFER_COUNT;
-            size_t *received_count_param = test_path == TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL ? NULL : &received_count;
+            const char *buffer = test_path == TP_SEND_NULL_BUFFER_FAIL ? NULL : test_msg;
+            size_t sent_count = BAD_BUFFER_COUNT;
+            size_t *sent_count_param = test_path == TP_SEND_NULL_SENT_COUNT_FAIL ? NULL : &sent_count;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////
             // Call the function under test
-            int receive_result = socket_async_receive(test_socket, buffer, sizeof(test_msg), received_count_param);
+            int send_result = socket_async_send(test_socket, buffer, sizeof(test_msg), sent_count_param);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////
             // Begin assertion phase
 
-            // Does receive_result match expectations>?
+            // Does send_result match expectations>?
             switch (test_path)
             {
-            case TP_RECEIVE_NULL_BUFFER_FAIL:           /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-            case TP_RECEIVE_FAIL:                       /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+            case TP_SEND_NULL_BUFFER_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+            case TP_SEND_NULL_SENT_COUNT_FAIL:  /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
+            case TP_SEND_FAIL:                  /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
+                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
                 break;
-            case TP_RECEIVE_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
-            case TP_RECEIVE_OK:            /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
+            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
                 break;
             default: ASSERT_FAIL("Unhandled test path");
             }
 
-            // Does received_count match expectations>?
+            // Does sent_count match expectations>?
             switch (test_path)
             {
-            case TP_RECEIVE_NULL_BUFFER_FAIL:
-            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:
-            case TP_RECEIVE_FAIL:
-                // The received_count should not have been touched
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, BAD_BUFFER_COUNT, "Unexpected returned received_count has been set");
+            case TP_SEND_NULL_BUFFER_FAIL:
+            case TP_SEND_NULL_SENT_COUNT_FAIL:
+            case TP_SEND_FAIL:
+                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, BAD_BUFFER_COUNT, "Unexpected returned sent_count has been set");
                 break;
-            case TP_RECEIVE_WAITING_OK:
-                /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, 0, "Unexpected returned received_count of non-zero");
+            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, 0, "Unexpected returned sent_count value is non-zero");
                 break;
-            case TP_RECEIVE_OK:
-                /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, sizeof(test_msg), "Unexpected returned received_count");
+            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, sizeof(test_msg), "Unexpected returned sent_count value is not message size");
                 break;
             default: ASSERT_FAIL("Unhandled test path");
             }
