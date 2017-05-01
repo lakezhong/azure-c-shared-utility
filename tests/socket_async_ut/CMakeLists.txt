@@ -28,7 +28,7 @@ else()
 endif()
 
 set(${theseTestsName}_h_files
-test_points.h
+test_defines.h
 keep_alive.h
 )
 
