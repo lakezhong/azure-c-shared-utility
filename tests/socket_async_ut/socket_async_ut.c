@@ -84,39 +84,20 @@ static void _Bool_ToString(char* string, size_t bufferSize, _Bool val)
 #endif
 
 #include "test_defines.h"
-#include "test_points.h"
 #include "keep_alive.h"
 
 // A non-tested function from socket.h
 int fcntl(int fd, int cmd, ... /* arg */) { (void)fd; (void)cmd; return 0; }
 
-static TEST_PATH_ID test_path;
-
-#if(0)
-// getsockopt is only used to retrieve extended errors, so this is simpler than
-// it might be.
-int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
+typedef enum
 {
-    (void)sockfd;
-    (void)level;
-    (void)optname;
-    (void)optlen;
-    int result = EAGAIN;
-    switch (test_path)
-    {
-    case TP_UDP_SOCKET_FAIL: result = EACCES; break;
-    case TP_UDP_CONNECT_IN_PROGRESS: result = EINPROGRESS; break;
-    case TP_SEND_FAIL: result = EACCES; break;
-    case TP_SEND_WAITING_OK: result = EAGAIN; break;
-    case TP_RECEIVE_FAIL: result = EACCES; break;
-    case TP_RECEIVE_WAITING_OK: result = EAGAIN; break;
-    }
-    // This ugly cast is safe for this UT and this socket_async.c file because of the 
-    // limited usage of getsockopt
-    *((int*)optval) = result;
-    return 0;
-}
-#endif
+    SELECT_TCP_IS_COMPLETE_ERRSET_FAIL,
+    SELECT_TCP_IS_COMPLETE_READY_OK,
+    SELECT_TCP_IS_COMPLETE_NOT_READY_OK,
+} SELECT_BEHAVIOR;
+
+// The mocked select() function uses FD_SET, etc. macros, so it needs to be specially implemented
+static SELECT_BEHAVIOR select_behavior;
 
 int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
@@ -130,20 +111,21 @@ int my_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, st
     // This arguably odd sequence of FD_SET, etc. was necessary
     // to make the linux_c-ubuntu-clang build succeed. FD_CLR
     // did not work as expected on that system, but this does the job.
-    switch (test_path)
+    switch (select_behavior)
     {
-    case TP_TCP_IS_COMPLETE_ERRSET_FAIL: 
+    case SELECT_TCP_IS_COMPLETE_ERRSET_FAIL: 
         FD_SET(nfds, exceptfds);
         break;
-    case TP_TCP_IS_COMPLETE_READY_OK:
+    case SELECT_TCP_IS_COMPLETE_READY_OK:
         FD_ZERO(exceptfds);
         FD_SET(nfds, writefds);
         break;
-    case TP_TCP_IS_COMPLETE_NOT_READY_OK:
-    default:
+    case SELECT_TCP_IS_COMPLETE_NOT_READY_OK:
         FD_ZERO(exceptfds);
         FD_ZERO(writefds);
         break;
+    default:
+        ASSERT_FAIL("program bug");
     }
     return 0;
 }
@@ -410,7 +392,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
     TEST_FUNCTION(socket_async_send_null_sent_count__fails)
     {
         ///arrange
-        // no calls expected
 
         char *buffer = test_msg;
         size_t size = sizeof(test_msg);
@@ -429,97 +410,211 @@ BEGIN_TEST_SUITE(socket_async_ut)
         // no cleanup necessary
     }
 
+    /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_send_send_fail__fails)
+    {
+        ///arrange
+
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        size_t *sent_count = &sent_count_receptor;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
+
+        STRICT_EXPECTED_CALL(send(test_socket, buffer, size, SEND_ZERO_FLAGS)).SetReturn(SEND_FAIL_RETURN);
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
+    TEST_FUNCTION(socket_async_send_send_waiting__succeeds)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        size_t *sent_count = &sent_count_receptor;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_WAITING;
+
+        STRICT_EXPECTED_CALL(send(test_socket, buffer, size, SEND_ZERO_FLAGS)).SetReturn(SEND_FAIL_RETURN);
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count_receptor, 0, "Unexpected sent_count_receptor");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
+    TEST_FUNCTION(socket_async_send_send__succeeds)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = sizeof(test_msg);
+        size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        size_t *sent_count = &sent_count_receptor;
+
+        STRICT_EXPECTED_CALL(send(test_socket, buffer, size, SEND_ZERO_FLAGS));
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count_receptor, sizeof(test_msg), "Unexpected sent_count_receptor");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_is_create_complete_null_is_complete__fails)
+    {
+        ///arrange
+        //bool is_complete = true;
+        //bool* is_complete_param = &is_complete;
+        bool* is_complete_param = NULL;
+
+        ///act
+        int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected send_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_is_create_select_fail__fails)
+    {
+        ///arrange
+        bool is_complete;
+        bool* is_complete_param = &is_complete;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
+
+        STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG)).SetReturn(SELECT_FAIL_RETURN);
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
 
 #if(0)
-    TEST_FUNCTION(socket_async_send_test)
+    TEST_FUNCTION(socket_async_is_create_complete_test)
     {
-        for (test_path = TP_SEND_NULL_BUFFER_FAIL; test_path <= TP_SEND_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
+        for (test_path = TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL; test_path <= TP_TCP_IS_COMPLETE_NOT_READY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
         {
             begin_arrange(test_path);   ////// Begin the Arrange phase     
-            init_keep_alive_values();
 
-            // Send test paths
-            //
-            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
-            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
-            // TP_SEND_FAIL,                       // send failed
-            // TP_SEND_WAITING_OK,                 // send not ready
-            // TP_SEND_OK,     
-            // 
+                                        // The socket_async_is_create_complete test paths
+                                        //
+                                        // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
+                                        // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
+                                        // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+                                        // TP_TCP_IS_COMPLETE_READY_OK,        // 
+                                        // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+                                        //
             switch (test_path)
             {
-            case TP_SEND_NULL_BUFFER_FAIL:
-            case TP_SEND_NULL_SENT_COUNT_FAIL:
-                // No expected calls here
+            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
+                // No expected call here
                 break;
-            case TP_SEND_FAIL:
-                TEST_PATH(TP_SEND_FAIL, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
+                TEST_PATH(TP_TCP_IS_COMPLETE_SELECT_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
                 break;
-            case TP_SEND_WAITING_OK:
-                // The "Fail" of send is not a failure, but rather returns a positive value for bytes sent 
-                TEST_PATH(TP_SEND_WAITING_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
+                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_ERRSET_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
                 break;
-            case TP_SEND_OK:
-                // The "No Fail" of send returns 0, which is a successful "no data available"
-                //TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG)).IgnoreArgument(1);
-                TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+            case TP_TCP_IS_COMPLETE_READY_OK:
+                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+                break;
+            case TP_TCP_IS_COMPLETE_NOT_READY_OK:
+                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
                 break;
             default: ASSERT_FAIL("Unhandled test path");
             }
 
             begin_act(test_path);       ////// Begin the Act phase 
 
-                                        /////////////////////////////////////////////////////////////////////////////////////////////////////
-                                        // Send test paths
+                                        //////////////////////////////////////////////////////////////////////////////////////////////////////
+                                        // The socket_async_is_create_complete test paths
                                         //
-                                        // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
-                                        // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
-                                        // TP_SEND_FAIL,                       // send failed
-                                        // TP_SEND_WAITING_OK,                 // send not ready
-                                        // TP_SEND_OK,     
-                                        // 
+                                        // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
+                                        // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
+                                        // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
+                                        // TP_TCP_IS_COMPLETE_READY_OK,        // 
+                                        // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
+                                        //
 
                                         /////////////////////////////////////////////////////////////////////////////////////////////////////
                                         // Set up input parameters
-            const char *buffer = test_path == TP_SEND_NULL_BUFFER_FAIL ? NULL : test_msg;
-            size_t sent_count = BAD_BUFFER_COUNT;
-            size_t *sent_count_param = test_path == TP_SEND_NULL_SENT_COUNT_FAIL ? NULL : &sent_count;
+                                        // We set is_complete to the opposite of what's expected so we can spot a change
+            bool is_complete = test_path != TP_TCP_IS_COMPLETE_READY_OK;
+            bool* is_complete_param = test_path == TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL ? NULL : &is_complete;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////
             // Call the function under test
-            int send_result = socket_async_send(test_socket, buffer, sizeof(test_msg), sent_count_param);
+            int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////
             // Begin assertion phase
 
-            // Does send_result match expectations>?
+            // Does create_complete_result match expectations?
             switch (test_path)
             {
-            case TP_SEND_NULL_BUFFER_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-            case TP_SEND_NULL_SENT_COUNT_FAIL:  /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-            case TP_SEND_FAIL:                  /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
+            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
+            case TP_TCP_IS_COMPLETE_SELECT_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result success");
                 break;
-            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
-            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
+            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
                 break;
             default: ASSERT_FAIL("Unhandled test path");
             }
 
-            // Does sent_count match expectations>?
+            // Does is_compete match expectations?
             switch (test_path)
             {
-            case TP_SEND_NULL_BUFFER_FAIL:
-            case TP_SEND_NULL_SENT_COUNT_FAIL:
-            case TP_SEND_FAIL:
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, BAD_BUFFER_COUNT, "Unexpected returned sent_count has been set");
+            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
+            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
+            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
+                // Undefined result here
                 break;
-            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, 0, "Unexpected returned sent_count value is non-zero");
+            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, false, "Unexpected returned is_complete is true");
                 break;
-            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, sizeof(test_msg), "Unexpected returned sent_count value is not message size");
+            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected returned is_complete is false");
                 break;
             default: ASSERT_FAIL("Unhandled test path");
             }
