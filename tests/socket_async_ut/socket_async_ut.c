@@ -605,11 +605,12 @@ BEGIN_TEST_SUITE(socket_async_ut)
         SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
         ///assert
-        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
         ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
     TEST_FUNCTION(socket_async_create__tcp_create_fail__fails)
     {
         ///arrange
@@ -623,494 +624,278 @@ BEGIN_TEST_SUITE(socket_async_ut)
         SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
         ///assert
-        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
         ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-#if(0)
-    TEST_FUNCTION(socket_async_recv_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_create__opt_default_fail__fails)
     {
-        for (test_path = TP_RECEIVE_NULL_BUFFER_FAIL; test_path <= TP_RECEIVE_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
+        ///arrange
+        SOCKET_ASYNC_OPTIONS* options = NULL;
+        bool is_udp = false;
 
-            // Receive test paths
-            //
-            // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
-            // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
-            // TP_RECEIVE_FAIL,                       // receive failed
-            // TP_RECEIVE_WAITING_OK,                 // receive not ready
-            // TP_RECEIVE_OK,     
-            // 
-            switch (test_path)
-            {
-            case TP_RECEIVE_FAIL:
-                TEST_PATH(TP_RECEIVE_FAIL, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            case TP_RECEIVE_WAITING_OK:
-                TEST_PATH(TP_RECEIVE_WAITING_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            case TP_RECEIVE_OK:
-                TEST_PATH_NO_FAIL(TP_RECEIVE_OK, recv(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            }
 
-            begin_act(test_path);       ////// Begin the Act phase 
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(SETSOCKOPT_FAIL_RETURN);
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Receive test paths
-            //
-            // TP_RECEIVE_NULL_BUFFER_FAIL,           // receive with null buffer
-            // TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL,   // receive with null receive count
-            // TP_RECEIVE_FAIL,                       // receive failed
-            // TP_RECEIVE_WAITING_OK,                 // receive not ready
-            // TP_RECEIVE_OK,     
-            // 
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Set up input parameters
-            char *buffer = test_path == TP_RECEIVE_NULL_BUFFER_FAIL ? NULL : test_msg;
-            size_t received_count = BAD_BUFFER_COUNT;
-            size_t *received_count_param = test_path == TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL ? NULL : &received_count;
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Call the function under test
-            int receive_result = socket_async_receive(test_socket, buffer, sizeof(test_msg), received_count_param);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does receive_result match expectations>?
-            switch (test_path)
-            {
-            case TP_RECEIVE_NULL_BUFFER_FAIL:           /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-            case TP_RECEIVE_FAIL:                       /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
-                break;
-            case TP_RECEIVE_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
-            case TP_RECEIVE_OK:            /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            // Does received_count match expectations>?
-            switch (test_path)
-            {
-            case TP_RECEIVE_NULL_BUFFER_FAIL:
-            case TP_RECEIVE_NULL_RECEIVED_COUNT_FAIL:
-            case TP_RECEIVE_FAIL: 
-                // The received_count should not have been touched
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, BAD_BUFFER_COUNT, "Unexpected returned received_count has been set");
-                break;
-            case TP_RECEIVE_WAITING_OK: 
-                /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, 0, "Unexpected returned received_count of non-zero");
-                break;
-            case TP_RECEIVE_OK:         
-                /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, received_count, sizeof(test_msg), "Unexpected returned received_count");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-    TEST_FUNCTION(socket_async_send_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_create__opt_0_fail__fails)
     {
-        for (test_path = TP_SEND_NULL_BUFFER_FAIL; test_path <= TP_SEND_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
-            init_keep_alive_values();
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
 
-            // Send test paths
-            //
-            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
-            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
-            // TP_SEND_FAIL,                       // send failed
-            // TP_SEND_WAITING_OK,                 // send not ready
-            // TP_SEND_OK,     
-            // 
-            switch (test_path)
-            {
-            case TP_SEND_NULL_BUFFER_FAIL:
-            case TP_SEND_NULL_SENT_COUNT_FAIL:
-                // No expected calls here
-                break;  
-            case TP_SEND_FAIL:
-                TEST_PATH(TP_SEND_FAIL, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            case TP_SEND_WAITING_OK:
-                // The "Fail" of send is not a failure, but rather returns a positive value for bytes sent 
-                TEST_PATH(TP_SEND_WAITING_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            case TP_SEND_OK:
-                // The "No Fail" of send returns 0, which is a successful "no data available"
-                //TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG)).IgnoreArgument(1);
-                TEST_PATH_NO_FAIL(TP_SEND_OK, send(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
 
-            begin_act(test_path);       ////// Begin the Act phase 
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(SETSOCKOPT_FAIL_RETURN);
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Send test paths
-            //
-            // TP_SEND_NULL_BUFFER_FAIL,           // send with null buffer
-            // TP_SEND_NULL_SENT_COUNT_FAIL,       // send with null sent count
-            // TP_SEND_FAIL,                       // send failed
-            // TP_SEND_WAITING_OK,                 // send not ready
-            // TP_SEND_OK,     
-            // 
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Set up input parameters
-            const char *buffer = test_path == TP_SEND_NULL_BUFFER_FAIL ? NULL : test_msg;
-            size_t sent_count = BAD_BUFFER_COUNT;
-            size_t *sent_count_param = test_path == TP_SEND_NULL_SENT_COUNT_FAIL ? NULL : &sent_count;
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Call the function under test
-            int send_result = socket_async_send(test_socket, buffer, sizeof(test_msg), sent_count_param);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does send_result match expectations>?
-            switch (test_path)
-            {
-            case TP_SEND_NULL_BUFFER_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-            case TP_SEND_NULL_SENT_COUNT_FAIL:  /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-            case TP_SEND_FAIL:                  /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result success");
-                break;
-            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
-            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            // Does sent_count match expectations>?
-            switch (test_path)
-            {
-            case TP_SEND_NULL_BUFFER_FAIL:
-            case TP_SEND_NULL_SENT_COUNT_FAIL:
-            case TP_SEND_FAIL: 
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, BAD_BUFFER_COUNT, "Unexpected returned sent_count has been set");
-                break;
-            case TP_SEND_WAITING_OK:    /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, 0, "Unexpected returned sent_count value is non-zero");
-                break;
-            case TP_SEND_OK:            /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count, sizeof(test_msg), "Unexpected returned sent_count value is not message size");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-    TEST_FUNCTION(socket_async_is_create_complete_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_create__opt_1_fail__fails)
     {
-        for (test_path = TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL; test_path <= TP_TCP_IS_COMPLETE_NOT_READY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
 
-            // The socket_async_is_create_complete test paths
-            //
-            // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
-            // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
-            // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
-            // TP_TCP_IS_COMPLETE_READY_OK,        // 
-            // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-            //
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
-                // No expected call here
-                break;
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
-                TEST_PATH(TP_TCP_IS_COMPLETE_SELECT_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_ERRSET_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
 
-            begin_act(test_path);       ////// Begin the Act phase 
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(SETSOCKOPT_FAIL_RETURN);
 
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            // The socket_async_is_create_complete test paths
-            //
-            // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
-            // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
-            // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
-            // TP_TCP_IS_COMPLETE_READY_OK,        // 
-            // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-            //
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Set up input parameters
-            // We set is_complete to the opposite of what's expected so we can spot a change
-            bool is_complete = test_path != TP_TCP_IS_COMPLETE_READY_OK;
-            bool* is_complete_param = test_path == TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL ? NULL : &is_complete;
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Call the function under test
-            int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does create_complete_result match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result success");
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            // Does is_compete match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
-                // Undefined result here
-                break;
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, false, "Unexpected returned is_complete is true");
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected returned is_complete is false");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-    TEST_FUNCTION(socket_async_create_tcp_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_create__opt_2_fail__fails)
     {
-        for (test_path = TP_TCP_SOCKET_FAIL; test_path <= TP_TCP_CONNECT_SUCCESS; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
-            init_keep_alive_values();
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
 
-            // The socket_async_create_tcp test paths
-            //// Create TCP
-            // TP_TCP_SOCKET_FAIL,			// socket create fail
-            // TP_TCP_SOCKET_OPT_0_FAIL,   // setsockopt set keep-alive fail 0
-            // TP_TCP_SOCKET_OPT_1_FAIL,   // setsockopt set keep-alive fail 1
-            // TP_TCP_SOCKET_OPT_2_FAIL,   // setsockopt set keep-alive fail 2
-            // TP_TCP_SOCKET_OPT_3_FAIL,   // setsockopt set keep-alive fail 3
-            // TP_TCP_SOCKET_OPT_DEFAULT_FAIL, // setsockopt default disable keep-alive fail
-            // TP_TCP_SOCKET_OPT_SET_OK,   // setsockopt set keep-alive OK
-            // TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK,   // setsockopt use system defaults for keep-alive
-            // TP_TCP_BIND_FAIL,			// socket bind fail
-            // TP_TCP_CONNECT_FAIL,		// socket connect fail
-            // TP_TCP_CONNECT_IN_PROGRESS,	// socket connect in progress
-            // TP_TCP_CONNECT_SUCCESS,     // socket connect instant success
-            //
 
-            switch (test_path)
-            {
-            case TP_TCP_SOCKET_FAIL:
-                TEST_PATH(TP_TCP_SOCKET_FAIL, socket(AF_INET, SOCK_STREAM, 0));
-                break;
-            case TP_TCP_SOCKET_OPT_0_FAIL:
-            case TP_TCP_SOCKET_OPT_1_FAIL:
-            case TP_TCP_SOCKET_OPT_2_FAIL:
-            case TP_TCP_SOCKET_OPT_3_FAIL:
-            case TP_TCP_SOCKET_OPT_SET_OK:
-                // Here we are explicitly setting the keep-alive options
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_FAIL, socket(AF_INET, SOCK_STREAM, 0));
-                TEST_PATH(TP_TCP_SOCKET_OPT_0_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH(TP_TCP_SOCKET_OPT_1_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH(TP_TCP_SOCKET_OPT_2_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH(TP_TCP_SOCKET_OPT_3_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_OPT_SET_OK, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_OPT_SET_OK, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH_NO_FAIL(TP_TCP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH_NO_FAIL(TP_TCP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(SETSOCKOPT_FAIL_RETURN);
 
-                break;
-            case TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK:
-                // Here we don't set any socket options
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK, socket(AF_INET, SOCK_STREAM, 0));
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                 break;
-            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
-            case TP_TCP_BIND_FAIL:
-            case TP_TCP_CONNECT_FAIL:
-            case TP_TCP_CONNECT_IN_PROGRESS:
-            case TP_TCP_CONNECT_SUCCESS:
-                // Here we are turning keep-alive off by default
-                TEST_PATH_NO_FAIL(TP_TCP_SOCKET_FAIL, socket(AF_INET, SOCK_STREAM, 0));
-                TEST_PATH(TP_TCP_SOCKET_OPT_DEFAULT_FAIL, setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH(TP_TCP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                TEST_PATH(TP_TCP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
-            begin_act(test_path);       ////// Begin the Act phase 
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Set up input parameters
-            SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
-            options_value.keep_alive = test_path == TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK ? test_keep_alive_sys_default : test_keep_alive;
-            SOCKET_ASYNC_OPTIONS* options = NULL;
-            if (test_path >= TP_TCP_SOCKET_OPT_0_FAIL && test_path <= TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK)
-            {
-                options = &options_value;
-            }
-            /* Tests_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
-            bool is_udp = false;
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Call the function under test
-            SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does create_result match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_SOCKET_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-                
-            /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
-            case TP_TCP_SOCKET_OPT_0_FAIL:
-            case TP_TCP_SOCKET_OPT_1_FAIL:
-            case TP_TCP_SOCKET_OPT_2_FAIL:
-            case TP_TCP_SOCKET_OPT_3_FAIL:
-            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
-
-            case TP_TCP_BIND_FAIL:      /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-            case TP_TCP_CONNECT_FAIL:   /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
-                break;
-
-            /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
-            case TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK:
-            case TP_TCP_CONNECT_IN_PROGRESS:
-            case TP_TCP_CONNECT_SUCCESS:
-            case TP_TCP_SOCKET_OPT_SET_OK:
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            // Do the keep-alive values match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_SOCKET_FAIL:
-            case TP_TCP_SOCKET_OPT_0_FAIL:
-            case TP_TCP_SOCKET_OPT_DEFAULT_FAIL:
-            case TP_TCP_SOCKET_OPT_SET_SYS_DEFAULTS_OK: /* Tests_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
-                ASSERT_KEEP_ALIVE_UNTOUCHED();
-                break;
-
-            case TP_TCP_SOCKET_OPT_1_FAIL:
-            case TP_TCP_SOCKET_OPT_2_FAIL:
-            case TP_TCP_SOCKET_OPT_3_FAIL:
-                // These are various uninteresting intermediate states of failing to fully
-                // set keep-alive values, and are not worth separate testing.
-                break;
-
-            case TP_TCP_SOCKET_OPT_SET_OK:  /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
-                ASSERT_KEEP_ALIVE_SET();
-                break;
-
-                /* Tests_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
-            case TP_TCP_BIND_FAIL:
-            case TP_TCP_CONNECT_FAIL:
-            case TP_TCP_CONNECT_IN_PROGRESS:
-            case TP_TCP_CONNECT_SUCCESS:
-                ASSERT_KEEP_ALIVE_FALSE();
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-    TEST_FUNCTION(socket_async_create_udp_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_020: [ If socket option setting fails, the sock value shall be set to SOCKET_ASYNC_INVALID_SOCKET and socket_async_create shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_create__opt_3_fail__fails)
     {
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
 
-        for (test_path = TP_UDP_SOCKET_FAIL; test_path <= TP_UDP_CONNECT_SUCCESS; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
 
-            // The socket_async_create_udp test paths
-            //// Create UDP
-            // TP_UDP_SOCKET_FAIL,			// socket create fail
-            // TP_UDP_BIND_FAIL,			// socket bind fail
-            // TP_UDP_CONNECT_FAIL,		    // socket connect fail
-            // TP_UDP_CONNECT_IN_PROGRESS,	// socket connect in progress
-            // TP_UDP_CONNECT_SUCCESS,      // socket connect instant success
-            //
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(SETSOCKOPT_FAIL_RETURN);
 
-            TEST_PATH(TP_UDP_SOCKET_FAIL, socket(AF_INET, SOCK_DGRAM, 0));
-            TEST_PATH(TP_UDP_BIND_FAIL, bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-            TEST_PATH(TP_UDP_CONNECT_FAIL, connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
 
-            begin_act(test_path);       ////// Begin the Act phase 
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Set up input parameters
-            /* Tests_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
-            bool is_udp = true;
-
-            SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, NULL);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does create_result match expectations?
-            switch (test_path)
-            {
-            case TP_UDP_SOCKET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-            case TP_UDP_BIND_FAIL:          /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-            case TP_UDP_CONNECT_FAIL:       /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
-                break;
-
-                /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
-            case TP_UDP_CONNECT_IN_PROGRESS:
-            case TP_UDP_CONNECT_SUCCESS:
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
-#endif
+
+    /* Tests_SRS_SOCKET_ASYNC_30_021: [ If socket binding fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+    TEST_FUNCTION(socket_async_create__bind_fail__fails)
+    {
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(BIND_FAIL_RETURN);
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_022: [ If socket connection fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+    TEST_FUNCTION(socket_async_create__connect_fail__fails)
+    {
+        ///arrange
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(BIND_FAIL_RETURN);
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
+    TEST_FUNCTION(socket_async_create__connect_waiting__succeeds)
+    {
+        ///arrange
+        init_keep_alive_values();
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_CONNECt_WAITING;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(BIND_FAIL_RETURN);
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_KEEP_ALIVE_SET();
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
+    TEST_FUNCTION(socket_async_create__succeeds)
+    {
+        ///arrange
+        init_keep_alive_values();
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_KEEP_ALIVE_SET();
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_015: [ If the optional options parameter is non-NULL and is_UDP is false, and options->keep_alive is negative, socket_async_create not set the socket keep-alive options. ]*/
+    TEST_FUNCTION(socket_async_create__default_sys_keep_alive__succeeds)
+    {
+        ///arrange
+        init_keep_alive_values();
+        SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive_sys_default , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = &options_value;
+        bool is_udp = false;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_KEEP_ALIVE_UNTOUCHED();
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_018: [ On success, socket_async_create shall return the created and configured SOCKET_ASYNC_HANDLE. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_017: [ If the optional options parameter is NULL and is_UDP is false, socket_async_create shall disable TCP keep-alive. ]*/
+    TEST_FUNCTION(socket_async_create__keep_alive_off_by_default__succeeds)
+    {
+        ///arrange
+        init_keep_alive_values();
+        SOCKET_ASYNC_OPTIONS* options = NULL;
+        bool is_udp = false;
+
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM, 0));
+        STRICT_EXPECTED_CALL(setsockopt(test_socket, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(bind(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(connect(test_socket, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_KEEP_ALIVE_FALSE();
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, test_socket, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
 
 END_TEST_SUITE(socket_async_ut)

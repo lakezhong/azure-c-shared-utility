@@ -76,10 +76,10 @@ static void ASSERT_KEEP_ALIVE_FALSE()
 /* Tests_SRS_SOCKET_ASYNC_30_014: [ If the optional options parameter is non-NULL and is_UDP is false, socket_async_create shall set the socket options to the provided values. ]*/
 static void ASSERT_KEEP_ALIVE_SET()
 {
-    ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, keep_alive, KEEP_ALIVE_UNDEFINED, "keep_count in ASSERT_KEEP_ALIVE_SET");
-    ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, keep_idle, KEEP_ALIVE_UNDEFINED, "keep_idle in ASSERT_KEEP_ALIVE_SET");
-    ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, keep_interval, KEEP_ALIVE_UNDEFINED, "keep_interval in ASSERT_KEEP_ALIVE_SET");
-    ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, keep_count, KEEP_ALIVE_UNDEFINED, "keep_count in ASSERT_KEEP_ALIVE_SET");
+    ASSERT_ARE_EQUAL_WITH_MSG(int, keep_alive, test_keep_alive, "keep_count in ASSERT_KEEP_ALIVE_SET");
+    ASSERT_ARE_EQUAL_WITH_MSG(int, keep_idle, test_keep_idle, "keep_idle in ASSERT_KEEP_ALIVE_SET");
+    ASSERT_ARE_EQUAL_WITH_MSG(int, keep_interval, test_keep_interval, "keep_interval in ASSERT_KEEP_ALIVE_SET");
+    ASSERT_ARE_EQUAL_WITH_MSG(int, keep_count, test_keep_count, "keep_count in ASSERT_KEEP_ALIVE_SET");
 }
 
 
