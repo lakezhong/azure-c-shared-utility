@@ -18,6 +18,7 @@ char test_msg[] = "Send this";
 #define SEND_FAIL_RETURN -1
 #define SEND_ZERO_FLAGS 0
 #define SELECT_FAIL_RETURN -1
+#define SOCKET_FAIL_RETURN -1
 #define EXTENDED_ERROR_FAIL EACCES
 #define EXTENDED_ERROR_WAITING EAGAIN
 static size_t sizeof_int = sizeof(test_socket);

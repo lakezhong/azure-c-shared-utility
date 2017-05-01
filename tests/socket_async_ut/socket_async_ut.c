@@ -561,7 +561,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
         select_behavior = SELECT_TCP_IS_COMPLETE_NOT_READY_OK;
 
         STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-        // getsockopt is used to get the extended error information after a socket failure
 
         ///act
         int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
@@ -582,7 +581,6 @@ BEGIN_TEST_SUITE(socket_async_ut)
         select_behavior = SELECT_TCP_IS_COMPLETE_READY_OK;
 
         STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-        // getsockopt is used to get the extended error information after a socket failure
 
         ///act
         int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
@@ -590,6 +588,42 @@ BEGIN_TEST_SUITE(socket_async_ut)
         ///assert
         ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected is_complete failure");
         ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+    /* Tests_SRS_SOCKET_ASYNC_30_013: [ The is_UDP parameter shall be true for a UDP connection, and false for TCP. ]*/
+    TEST_FUNCTION(socket_async_create__udp_create_fail__fails)
+    {
+        ///arrange
+        SOCKET_ASYNC_OPTIONS* options = NULL;
+        bool is_udp = true;
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_DGRAM /* the UDP value */, 0)).SetReturn(SOCKET_FAIL_RETURN);
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_010: [ If socket option creation fails, socket_async_create shall log an error and return SOCKET_ASYNC_INVALID_SOCKET. ]*/
+    TEST_FUNCTION(socket_async_create__tcp_create_fail__fails)
+    {
+        ///arrange
+        //SOCKET_ASYNC_OPTIONS options_value = { test_keep_alive , test_keep_idle , test_keep_interval, test_keep_count };
+        SOCKET_ASYNC_OPTIONS* options = NULL;
+        bool is_udp = false;
+
+        STRICT_EXPECTED_CALL(socket(AF_INET, SOCK_STREAM /* the TCP value */, 0)).SetReturn(SOCKET_FAIL_RETURN);
+
+        ///act
+        SOCKET_ASYNC_HANDLE create_result = socket_async_create(test_ipv4, test_port, is_udp, options);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_result, SOCKET_ASYNC_INVALID_SOCKET, "Unexpected create_result failure");
         ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
