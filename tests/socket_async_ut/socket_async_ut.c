@@ -242,7 +242,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_052: [ If the buffer parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_receive_null_buffer__fails)
+    TEST_FUNCTION(socket_async_receive__null_buffer__fails)
     {
         ///arrange
         // no calls expected
@@ -265,7 +265,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_053: [ If the received_count parameter is NULL, socket_async_receive shall log the error and return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_receive_null_received_count__fails)
+    TEST_FUNCTION(socket_async_receive__null_received_count__fails)
     {
         ///arrange
         // no calls expected
@@ -287,7 +287,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_receive_recv_fail__fails)
+    TEST_FUNCTION(socket_async_receive__recv_fail__fails)
     {
         ///arrange
         char *buffer = test_msg;
@@ -315,7 +315,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_055: [ If the underlying socket has no received bytes available, socket_async_receive shall return 0 and the received_count parameter shall receive the value 0. ]*/
-    TEST_FUNCTION(socket_async_receive_recv_waiting__succeeds)
+    TEST_FUNCTION(socket_async_receive__recv_waiting__succeeds)
     {
         ///arrange
         char *buffer = test_msg;
@@ -343,7 +343,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_054: [ On success, the underlying socket shall set one or more received bytes into buffer, socket_async_receive shall return 0, and the received_count parameter shall receive the number of bytes received into buffer. ]*/
-    TEST_FUNCTION(socket_async_receive_recv__succeeds)
+    TEST_FUNCTION(socket_async_receive__recv__succeeds)
     {
         ///arrange
         char *buffer = test_msg;
@@ -366,7 +366,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_033: [ If the buffer parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_send_null_buffer__fails)
+    TEST_FUNCTION(socket_async_send__null_buffer__fails)
     {
         ///arrange
         // no calls expected
@@ -389,7 +389,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_034: [ If the sent_count parameter is NULL, socket_async_send shall log the error return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_send_null_sent_count__fails)
+    TEST_FUNCTION(socket_async_send__null_sent_count__fails)
     {
         ///arrange
 
@@ -411,7 +411,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_037: [ If socket_async_send fails unexpectedly, socket_async_send shall log the error return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_send_send_fail__fails)
+    TEST_FUNCTION(socket_async_send__send_fail__fails)
     {
         ///arrange
 
@@ -439,7 +439,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_036: [ If the underlying socket is unable to accept any bytes for transmission because its buffer is full, socket_async_send shall return 0 and the sent_count parameter shall receive the value 0. ]*/
-    TEST_FUNCTION(socket_async_send_send_waiting__succeeds)
+    TEST_FUNCTION(socket_async_send__send_waiting__succeeds)
     {
         ///arrange
         char *buffer = test_msg;
@@ -467,7 +467,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_035: [ If the underlying socket accepts one or more bytes for transmission, socket_async_send shall return 0 and the sent_count parameter shall receive the number of bytes accepted for transmission. ]*/
-    TEST_FUNCTION(socket_async_send_send__succeeds)
+    TEST_FUNCTION(socket_async_send__succeeds)
     {
         ///arrange
         char *buffer = test_msg;
@@ -490,7 +490,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_is_create_complete_null_is_complete__fails)
+    TEST_FUNCTION(socket_async_is_create_complete__null_is_complete__fails)
     {
         ///arrange
         //bool is_complete = true;
@@ -506,7 +506,7 @@ BEGIN_TEST_SUITE(socket_async_ut)
     }
 
     /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
-    TEST_FUNCTION(socket_async_is_create_select_fail__fails)
+    TEST_FUNCTION(socket_async_is_create_complete__select_fail__fails)
     {
         ///arrange
         bool is_complete;
@@ -527,102 +527,71 @@ BEGIN_TEST_SUITE(socket_async_ut)
         ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
 
-#if(0)
-    TEST_FUNCTION(socket_async_is_create_complete_test)
+    /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_is_create_complete__errset_set__fails)
     {
-        for (test_path = TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL; test_path <= TP_TCP_IS_COMPLETE_NOT_READY_OK; test_path = (TEST_PATH_ID)((int)test_path + 1))
-        {
-            begin_arrange(test_path);   ////// Begin the Arrange phase     
+        ///arrange
+        bool is_complete;
+        bool* is_complete_param = &is_complete;
+        // Define how the FD_ISET etc. macros behave
+        select_behavior = SELECT_TCP_IS_COMPLETE_ERRSET_FAIL;
+        // getsockopt is used to get the extended error information after a socket failure
+        int getsockopt_extended_error_return_value = EXTENDED_ERROR_FAIL;
 
-                                        // The socket_async_is_create_complete test paths
-                                        //
-                                        // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
-                                        // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
-                                        // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
-                                        // TP_TCP_IS_COMPLETE_READY_OK,        // 
-                                        // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-                                        //
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
-                // No expected call here
-                break;
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
-                TEST_PATH(TP_TCP_IS_COMPLETE_SELECT_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_ERRSET_FAIL, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:
-                TEST_PATH_NO_FAIL(TP_TCP_IS_COMPLETE_NOT_READY_OK, select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
+        STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+        // getsockopt is used to get the extended error information after a socket failure
+        STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+            .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
 
-            begin_act(test_path);       ////// Begin the Act phase 
+        ///act
+        int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
 
-                                        //////////////////////////////////////////////////////////////////////////////////////////////////////
-                                        // The socket_async_is_create_complete test paths
-                                        //
-                                        // TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL, // supplying a null is_complete
-                                        // TP_TCP_IS_COMPLETE_SELECT_FAIL,     // the select call fails
-                                        // TP_TCP_IS_COMPLETE_ERRSET_FAIL,     // a non-empty error set
-                                        // TP_TCP_IS_COMPLETE_READY_OK,        // 
-                                        // TP_TCP_IS_COMPLETE_NOT_READY_OK,    // 
-                                        //
-
-                                        /////////////////////////////////////////////////////////////////////////////////////////////////////
-                                        // Set up input parameters
-                                        // We set is_complete to the opposite of what's expected so we can spot a change
-            bool is_complete = test_path != TP_TCP_IS_COMPLETE_READY_OK;
-            bool* is_complete_param = test_path == TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL ? NULL : &is_complete;
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Call the function under test
-            int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
-
-            /////////////////////////////////////////////////////////////////////////////////////////////////////
-            // Begin assertion phase
-
-            // Does create_complete_result match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:    /* Tests_SRS_SOCKET_ASYNC_30_026: [ If the is_complete parameter is NULL, socket_async_is_create_complete shall log an error and return FAILURE. ]*/
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:        /* Tests_SRS_SOCKET_ASYNC_30_028: [ On failure, the is_complete value shall be set to false and socket_async_create shall return FAILURE. ]*/
-                ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result success");
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            // Does is_compete match expectations?
-            switch (test_path)
-            {
-            case TP_TCP_IS_COMPLETE_NULL_PARAM_FAIL:
-            case TP_TCP_IS_COMPLETE_SELECT_FAIL:
-            case TP_TCP_IS_COMPLETE_ERRSET_FAIL:
-                // Undefined result here
-                break;
-            case TP_TCP_IS_COMPLETE_NOT_READY_OK:   /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, false, "Unexpected returned is_complete is true");
-                break;
-            case TP_TCP_IS_COMPLETE_READY_OK:       /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
-                ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected returned is_complete is false");
-                break;
-            default: ASSERT_FAIL("Unhandled test path");
-            }
-
-            end_assertions();   ////// End the Assertion phase and verify call sequence 
-        }
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
     }
-#endif
+
+    /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+    TEST_FUNCTION(socket_async_is_create_complete__waiting__succeeds)
+    {
+        ///arrange
+        bool is_complete = true; // unexpected so change can be detected
+        bool* is_complete_param = &is_complete;
+        // Define how the FD_ISET etc. macros behave
+        select_behavior = SELECT_TCP_IS_COMPLETE_NOT_READY_OK;
+
+        STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+        // getsockopt is used to get the extended error information after a socket failure
+
+        ///act
+        int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, false, "Unexpected is_complete failure");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    /* Codes_SRS_SOCKET_ASYNC_30_027: [ On success, the is_complete value shall be set to the completion state and socket_async_create shall return 0. ]*/
+    TEST_FUNCTION(socket_async_is_create_complete__succeeds)
+    {
+        ///arrange
+        bool is_complete = false; // unexpected so change can be detected
+        bool* is_complete_param = &is_complete;
+        // Define how the FD_ISET etc. macros behave
+        select_behavior = SELECT_TCP_IS_COMPLETE_READY_OK;
+
+        STRICT_EXPECTED_CALL(select(test_socket + 1, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+        // getsockopt is used to get the extended error information after a socket failure
+
+        ///act
+        int create_complete_result = socket_async_is_create_complete(test_socket, is_complete_param);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(bool, is_complete, true, "Unexpected is_complete failure");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, create_complete_result, 0, "Unexpected create_complete_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
 
 #if(0)
     TEST_FUNCTION(socket_async_recv_test)
