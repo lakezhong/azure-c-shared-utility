@@ -83,17 +83,6 @@ typedef struct TLSIO_CONFIG_TAG
 ```
  **]**
 
-## Internal State
-The quoted internal states "Open" and "Not Open" discussed in this spec are implementation dependent, and are not exposed via the API. The `setoption` and `retrieveoptions` calls are not currently supported, so any state changes they might introduce are intentionally ignored in this document.
-
-"Open" refers to an internal state where the SSL connection is made and the `concrete_io_send` and `concrete_io_dowork` calls are expected to succeed.
-
-"Not Open" refers to an internal state where the SSL connection is not made, all internal connection resources have been released, and the `concrete_io_open` call is expected to succeed.
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_070: [** After `concrete_io_create` has succeeded, tlsio_openssl_compact shall maintain its internal state in either "Open" or "Not Open" at all times until `concrete_io_destroy` is called. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_071: [** Failures which indicate that the SSL connection cannot be trusted shall cause the tlsio_openssl_compact to transition to the "Not Open" state. **]**
-
 
 ## Callbacks
 
@@ -117,7 +106,7 @@ Implementation of `IO_CREATE concrete_io_create`
 CONCRETE_IO_HANDLE tlsio_openssl_compact_create(void* io_create_parameters);
 ```
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_009: [** The `tlsio_openssl_compact_create` shall allocate and initialize all necessary resources, enter the "Not Open" state, and return an instance of the tlsio for compact OpenSSL. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_009: [** The `tlsio_openssl_compact_create` shall allocate and initialize all necessary resources and return an instance of the `tlsio_openssl_compact`. **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_010: [** If the allocation fails, `tlsio_openssl_compact_create` shall return NULL. **]**
 
@@ -126,10 +115,6 @@ CONCRETE_IO_HANDLE tlsio_openssl_compact_create(void* io_create_parameters);
 **SRS_TLSIO_OPENSSL_COMPACT_30_012: [** The `tlsio_openssl_compact_create` shall receive the connection configuration (TLSIO_CONFIG). **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_013: [** If the `io_create_parameters` value is NULL, `tlsio_openssl_compact_create` shall log an error and return NULL. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_014: [** The `tlsio_openssl_compact_create` shall convert the provided `hostName` to an IPv4 address. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_015: [** If the IP for the `hostName` cannot be found, `tlsio_openssl_compact_create` shall return NULL. **]**
 
 
 ###   tlsio_openssl_compact_destroy
@@ -140,9 +125,9 @@ void tlsio_openssl_compact_destroy(CONCRETE_IO_HANDLE tlsio_handle);
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_016: [** If `tlsio_handle` is NULL, `tlsio_openssl_compact_destroy` shall do nothing. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_017: [** The `tlsio_openssl_compact_destroy` shall enter the "Not Open" state if necessary and then release `tlsio_handle`. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_017: [** The `tlsio_openssl_compact_destroy` shall release all allocated resources and then release `tlsio_handle`. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_018: [** If the adapter is in the "Open" state, concrete_io_destroy shall log an error. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_018: [** If `tlsio_openssl_compact_close` has not been called before `concrete_io_destroy`, `concrete_io_destroy` shall log an error. **]**
 
 
 ###   tlsio_openssl_compact_open
@@ -160,11 +145,13 @@ int tlsio_openssl_compact_open(
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_019: [** If the `tlsio_handle` parameter is NULL, `tlsio_openssl_compact_open` shall log an error and return _FAILURE_. **]**
 
+**SRS_TLSIO_OPENSSL_COMPACT_30_074: [** If the on_io_open_complete parameter is NULL, `tlsio_openssl_compact_open` shall log an error and return _FAILURE_. **]**
+
 **SRS_TLSIO_OPENSSL_COMPACT_30_020: [** If the on_bytes_received parameter is NULL, `tlsio_openssl_compact_open` shall log an error and return _FAILURE_. **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_052: [** If the on_io_error parameter is NULL, `tlsio_openssl_compact_open` shall log an error and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_021: [** The `tlsio_openssl_compact_open` shall open the ssl connection with the host provided in the `tlsio_openssl_compact_create`. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_021: [** The `tlsio_openssl_compact_open` shall begin the process of opening the ssl connection with the host provided in the `tlsio_openssl_compact_create` call. **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_022: [** The `tlsio_openssl_compact_open` shall store the provided `on_bytes_received` callback function address. **]**
 
@@ -174,17 +161,13 @@ int tlsio_openssl_compact_open(
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_025: [** The `tlsio_openssl_compact_open` shall store the provided `on_io_error_context` handle. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_026: [** If `tlsio_openssl_compact_open` successfully opens the ssl connection, it shall enter the "Open" state and return 0. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_026: [** If `tlsio_openssl_compact_open` successfully begins opening the ssl connection, it shall return 0. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_027: [** If `tlsio_openssl_compact_open` successfully opens the ssl connection and `on_io_open_complete` is non-NULL it shall call `on_io_open_complete` with IO_OPEN_OK. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_028: [** If `tlsio_openssl_compact_dowork` calls `on_io_open_complete`, it shall always pass the provided `on_io_open_complete_context` parameter. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_028: [** If `tlsio_openssl_compact_open` calls `on_io_open_complete`, it shall always pass the provided `on_io_open_complete_context` parameter. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_029: [** If `tlsio_openssl_compact_open` has already been called, it shall log an error, and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_029: [** If the adapter is in the "Open" state, it shall remain in the "Open" state, log an error, and return _FAILURE_. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_030: [** If `tlsio_openssl_compact_open` fails to open the ssl connection with a non-NULL `tlsio_handle`, it shall enter the "Not Open" state and return _FAILURE_. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_031: [** If the `tlsio_openssl_compact_open` returns _FAILURE_ and the `on_io_open_complete` callback was provided, it shall call  `on_io_open_complete` with IO_OPEN_ERROR. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_031: [** If the `tlsio_openssl_compact_open` returns _FAILURE_  it shall call  `on_io_open_complete` with IO_OPEN_ERROR. **]**
 
 
 ###   tlsio_openssl_compact_close
@@ -195,11 +178,13 @@ int tlsio_openssl_compact_close(CONCRETE_IO_HANDLE tlsio_handle, ON_IO_CLOSE_COM
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_033: [** If the `tlsio_handle` parameter is NULL, `tlsio_openssl_compact_close` shall log an error and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_034: [** The `tlsio_openssl_compact_close` shall enter the "Not Open" state by forcibly closing any existing ssl connection. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_034: [** The `tlsio_openssl_compact_close` shall forcibly close any existing ssl connection. **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_035: [** The `tlsio_openssl_compact_close` return value shall be 0 except as noted in the next requirement. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_036: [** If the adapter is in the "Not Open" state, then `tlsio_openssl_compact_close` shall log an error and return _FAILURE_. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_036: [** If `tlsio_openssl_compact_open` has not been called  then `tlsio_openssl_compact_close` shall log an error and return _FAILURE_. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_060: [** If `tlsio_openssl_compact_open` has been called  but the process of opening has not been completed, then the `on_io_open_complete` callback shall be made with `IO_SEND_CANCELLED`. **]**
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_037: [** If `on_io_close_complete` is provided, `tlsio_openssl_compact_close` shall call `on_io_close_complete`. **]**
 
@@ -214,23 +199,15 @@ int tlsio_openssl_compact_send(CONCRETE_IO_HANDLE tlsio_handle, const void* buff
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_039: [** If the `tlsio_handle` parameter is NULL, `tlsio_openssl_compact_send` shall log an error and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_040: [** The `tlsio_openssl_compact_send` shall send the first `size` bytes in `buffer` to the ssl connection. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_046: [** If the `buffer` is NULL, `tlsio_openssl_compact_send` shall log the error and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_041: [** The `tlsio_openssl_compact_send` shall call the provided `on_send_complete` callback function. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_075: [** If the `on_send_complete` is NULL, `tlsio_openssl_compact_send` shall log the error and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_042: [** The `tlsio_openssl_compact_send` shall supply the provided `callback_context` when it calls `on_send_complete`. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_040: [** The `tlsio_openssl_compact_send` shall enqueue the `size` bytes in `buffer` for transmission to the ssl connection. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_043: [** if the ssl was not able to send all data in the buffer, the `tlsio_openssl_compact_send` shall call the ssl again to send the remaining bytes. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_070: [** if the supplied message cannot be enqueued for transmission, `tlsio_openssl_compact_send` shall call the `on_send_complete` with IO_SEND_ERROR, and return _FAILURE_. **]**
 
-**SRS_TLSIO_OPENSSL_COMPACT_30_044: [** if the ssl fails before sending all of the bytes in the buffer, the `tlsio_openssl_compact_send` shall call the `on_send_complete` with IO_SEND_ERROR, and return _FAILURE_. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_045: [** if the ssl was able to send all the bytes in the buffer, the `tlsio_openssl_compact_send` shall call the `on_send_complete` with IO_SEND_OK, and return 0 **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_046: [** If the buffer is NULL, the `tlsio_openssl_compact_send` shall log the error and return _FAILURE_. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_047: [** If the size is 0, the `tlsio_openssl_compact_send` shall do nothing and return 0. **]**
-
-**SRS_TLSIO_OPENSSL_COMPACT_30_072: [** If the tlsio state is "Not Open", the `tlsio_openssl_compact_send` shall log an error and return _FAILURE_. **]**
+**SRS_TLSIO_OPENSSL_COMPACT_30_072: [** If `tlsio_openssl_compact_open` has not been called or the opening process has not been completed, `tlsio_openssl_compact_send` shall log an error and return _FAILURE_. **]**
 
 
 ###   tlsio_openssl_compact_dowork
@@ -238,11 +215,39 @@ Implementation of `IO_DOWORK concrete_io_dowork`
 ```c
 void tlsio_openssl_compact_dowork(CONCRETE_IO_HANDLE tlsio_handle);
 ```
-The `tlsio_openssl_compact_dowork` call executes async jobs for the tlsio. For this implementation, the only async work required is to check the SSL connection for available bytes to read.
+The `tlsio_openssl_compact_dowork` call executes async jobs for the tlsio. This includes connection completion, sending to the SSL connection, and checking the SSL connection for available bytes to read.
 
 The underlying OpenSSL `SSL_read` call does not return errors if the connection has been lost, so the tlsio will not know if the connection has been lost until it attempts a write operation.
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_048: [** If the `tlsio_handle` parameter is NULL, `tlsio_openssl_compact_dowork` shall do nothing except log an error. **]**
+
+#### Connection completion behaviors
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_014: [** The `tlsio_openssl_compact_dowork` shall convert the provided `hostName` to an IPv4 address. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_015: [** If the IP for the `hostName` cannot be found, `tlsio_openssl_compact_dowork` shall call `on_io_open_complete` with IO_OPEN_ERROR. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_030: [** If `tlsio_openssl_compact_dowork` fails to open the ssl connection it shall call `on_io_open_complete` with IO_OPEN_ERROR. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_027: [** If `tlsio_openssl_compact_dowork` successfully opens the ssl connection it shall call `on_io_open_complete` with IO_OPEN_OK. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_071: [** If `tlsio_openssl_compact_dowork` calls `on_io_open_complete`, it shall always pass the provided `on_io_open_complete_context` parameter. **]**
+
+#### Data transmission behaviors
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_047: [** If an enqueued message size is 0, the `tlsio_openssl_compact_dowork` shall just call the `on_send_complete` with IO_SEND_OK. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_045: [** if the ssl was able to send all the bytes in the buffer, the `tlsio_openssl_compact_dowork` shall call the `on_send_complete` with IO_SEND_OK. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_043: [** if the ssl send was not able to send an entire enqueued message at once, `tlsio_openssl_compact_dowork` shall call the ssl again to send the remaining bytes. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_042: [** The `tlsio_openssl_compact_dowork` shall supply the provided `callback_context` when it calls `on_send_complete`. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_044: [** if the ssl fails before sending all of the bytes in the buffer, the `tlsio_openssl_compact_dowork` shall call the `on_send_complete` with IO_SEND_ERROR. **]**
+
+**SRS_TLSIO_OPENSSL_COMPACT_30_076: [** if `tlsio_openssl_compact_close` is called while there are unsent messages in the queue, the `tlsio_openssl_compact_dowork` shall call `on_send_complete` with IO_SEND_ERROR for each message. **]**
+
+#### Received data behaviors
 
 **SRS_TLSIO_OPENSSL_COMPACT_30_049: [** If the ssl client is able to provide received data, the `tlsio_openssl_compact_dowork` shall read this data and call  `on_bytes_received` with the pointer to the buffer containing the data and the number of bytes received. **]**
 
