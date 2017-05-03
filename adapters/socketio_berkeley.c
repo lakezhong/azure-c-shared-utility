@@ -58,6 +58,7 @@ typedef struct SOCKET_IO_INSTANCE_TAG
     void* on_io_error_context;
     char* hostname;
     int port;
+    char* target_mac_address;
     IO_STATE io_state;
     SINGLYLINKEDLIST_HANDLE pending_io_list;
 } SOCKET_IO_INSTANCE;
@@ -161,6 +162,111 @@ static void signal_callback(int signum)
     LogError("Socket received signal %d.", signum);
 }
 
+typedef struct NETWORK_INTERFACE_DESCRIPTION_TAG
+{
+    const char* mac_address;
+    void* ip_address;
+    struct NETWORK_INTERFACE_DESCRIPTION_TAG* next;
+} NETWORK_INTERFACE_DESCRIPTION;
+
+static int get_network_interface_descriptions(int socket, NETWORK_INTERFACE_DESCRIPTION** nid)
+{
+    int result;
+
+    struct ifreq ifr;
+    struct ifconf ifc;
+    char buf[1024];
+
+    ifc.ifc_len = sizeof(buf);
+    ifc.ifc_buf = buf;
+
+    if (ioctl(socket, SIOCGIFCONF, &ifc) == -1)
+    {
+        LogError("ioctl failed querying socket (SIOCGIFCONF)");
+        result = __FAILURE__;
+    }
+    else 
+    {
+        NETWORK_INTERFACE_DESCRIPTION* new_nid = NULL;
+        nid = new_nid;
+
+        struct ifreq* it = ifc.ifc_req;
+        const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
+
+        for (; it != end; ++it)
+        {
+            strcpy(ifr.ifr_name, it->ifr_name);
+
+            if (ioctl(socket, SIOCGIFFLAGS, &ifr) != 0)
+            {
+                LogError("ioctl failed querying socket (SIOCGIFFLAGS)");
+                result = __FAILURE__;
+                break;
+            }
+            else if (ioctl(socket, SIOCGIFHWADDR, &ifr) != 0)
+            {
+                LogError("ioctl failed querying socket (SIOCGIFHWADDR)");
+                result = __FAILURE__;
+                break;
+            }
+            else if (ioctl(sock, SIOCGIFADDR, &ifr) != 0)
+            {
+                LogError("ioctl failed querying socket (SIOCGIFADDR)");
+                result = __FAILURE__;
+                break;
+            }
+            else
+            {
+                struct sockaddr_in* ipaddr = (struct sockaddr_in*)&ifr.ifr_addr;
+                unsigned char* mac = (unsigned char*)ifr.ifr_hwaddr.sa_data;
+                printf("if=%s, addr=%s, macaddr=%02X:%02X:%02X:%02X:%02X:%02X\r\n", ifr.ifr_name, inet_ntoa(ipaddr->sin_addr), mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+            }
+        }
+    }
+
+    return result;
+}
+
+static void destroy_network_interface_descriptions(NETWORK_INTERFACE_DESCRIPTION* nid)
+{
+    free(nid->mac_address);
+    free(nid->ip_address);
+
+    if (nid->next != NULL)
+    {
+        destroy_network_interface_descriptions(nid->next);
+    }
+}
+
+static int set_target_network_interface(int socket, char* mac_address)
+{
+    int result;
+
+    NETWORK_INTERFACE_DESCRIPTION* nid;
+
+    if (get_network_interface_descriptions(socket, &nid) == 0)
+    {
+        NETWORK_INTERFACE_DESCRIPTION* current_nid = nid;
+        result = __FAILURE__;
+    
+        while(current_nid != NULL)
+        {
+            if (strcpy(mac_address, current_nid->mac_address) == 0)
+            {
+                
+                result = 0;
+                break;
+            }
+
+            current_nid = current_nid->next;
+        }
+
+        destroy_network_interface_descriptions(nid);
+    }
+
+    return result;
+}
+
 CONCRETE_IO_HANDLE socketio_create(void* io_create_parameters)
 {
     SOCKETIO_CONFIG* socket_io_config = io_create_parameters;
@@ -211,6 +317,7 @@ CONCRETE_IO_HANDLE socketio_create(void* io_create_parameters)
                 else
                 {
                     result->port = socket_io_config->port;
+                    result->target_mac_address = NULL;
                     result->on_bytes_received = NULL;
                     result->on_io_error = NULL;
                     result->on_bytes_received_context = NULL;
@@ -256,6 +363,7 @@ void socketio_destroy(CONCRETE_IO_HANDLE socket_io)
 
         singlylinkedlist_destroy(socket_io_instance->pending_io_list);
         free(socket_io_instance->hostname);
+        free(socket_io_instance->target_mac_address);
         free(socket_io);
     }
 }
@@ -300,6 +408,14 @@ int socketio_open(CONCRETE_IO_HANDLE socket_io, ON_IO_OPEN_COMPLETE on_io_open_c
             if (socket_io_instance->socket < SOCKET_SUCCESS)
             {
                 LogError("Failure: socket create failure %d.", socket_io_instance->socket);
+                result = __FAILURE__;
+            }
+            else if (socket_io_instance->target_mac_address != NULL &&
+                     set_target_network_interface(socket_io_instance->socket, socket_io_instance->target_mac_address) != 0)
+            {
+                LogError("Failure: failed selecting target network interface (MACADDR=%s).", socket_io_instance->target_mac_address);
+                close(socket_io_instance->socket);
+                socket_io_instance->socket = INVALID_SOCKET;
                 result = __FAILURE__;
             }
             else
