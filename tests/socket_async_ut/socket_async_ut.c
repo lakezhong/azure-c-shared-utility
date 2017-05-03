@@ -286,6 +286,28 @@ BEGIN_TEST_SUITE(socket_async_ut)
         // no cleanup necessary
     }
 
+    /* Tests_SRS_SOCKET_ASYNC_30_072: [ If the size parameter is 0, socket_async_receive shall log an error and return FAILURE. ]*/
+    TEST_FUNCTION(socket_async_receive__0_received_count__fails)
+    {
+        ///arrange
+        // no calls expected
+
+        char *buffer = test_msg;
+        size_t size = 0;
+        size_t received_count_receptor = BAD_BUFFER_COUNT;
+        size_t *received_count = &received_count_receptor;
+
+        ///act
+        int receive_result = socket_async_receive(test_socket, buffer, size, received_count);
+
+        ///assert
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, receive_result, 0, "Unexpected receive_result success");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
     /* Codes_SRS_SOCKET_ASYNC_30_056: [ If the underlying socket fails unexpectedly, socket_async_receive shall log the error and return FAILURE. ]*/
     TEST_FUNCTION(socket_async_receive__recv_fail__fails)
     {
@@ -453,6 +475,28 @@ BEGIN_TEST_SUITE(socket_async_ut)
         // getsockopt is used to get the extended error information after a socket failure
         STRICT_EXPECTED_CALL(getsockopt(test_socket, SOL_SOCKET, SO_ERROR, IGNORED_NUM_ARG, IGNORED_NUM_ARG))
             .CopyOutArgumentBuffer_optval(&getsockopt_extended_error_return_value, sizeof_int);
+
+        ///act
+        int send_result = socket_async_send(test_socket, buffer, size, sent_count);
+
+        ///assert
+        ASSERT_ARE_EQUAL_WITH_MSG(int, sent_count_receptor, 0, "Unexpected sent_count_receptor");
+        ASSERT_ARE_EQUAL_WITH_MSG(int, send_result, 0, "Unexpected send_result failure");
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        ///cleanup
+        // no cleanup necessary
+    }
+
+    /* Tests_SRS_SOCKET_ASYNC_30_073: [ If the size parameter is 0, socket_async_send shall set sent_count to 0 and return 0. ]*/
+    TEST_FUNCTION(socket_async_send__send_0_bytes__succeeds)
+    {
+        ///arrange
+        char *buffer = test_msg;
+        size_t size = 0;
+        size_t sent_count_receptor = BAD_BUFFER_COUNT;
+        size_t *sent_count = &sent_count_receptor;
+
 
         ///act
         int send_result = socket_async_send(test_socket, buffer, size, sent_count);
