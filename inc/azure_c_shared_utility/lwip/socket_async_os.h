@@ -9,3 +9,4 @@
 // ESP32
 
 #include "lwip/sockets.h"
+#include "lwip/netdb.h"
