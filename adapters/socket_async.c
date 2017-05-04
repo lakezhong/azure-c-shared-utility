@@ -325,7 +325,7 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
     return result;
 }
 
-void socket_async_destroy(int sock)
+void socket_async_destroy(SOCKET_ASYNC_HANDLE sock)
 {
     /* Codes_SRS_SOCKET_ASYNC_30_071: [ socket_async_destroy shall call the underlying close method on the supplied socket. ]*/
     close(sock);
